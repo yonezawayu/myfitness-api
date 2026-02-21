@@ -133,3 +133,28 @@ GET /dashboard/today
 - **「一覧画面用 API」専用に最適化**
 - 複数ドメインをまたぐ集計処理の練習
 - Service / Controller / ExceptionHandler の責務分離を意識
+
+## Tech Stack
+
+- Java 17
+- Spring Boot 3.4.x
+- JPA / Hibernate
+- PostgreSQL (Docker)
+- Swagger (springdoc-openapi)
+- JUnit 5
+- GitHub Actions (CI)
+
+---
+
+## Getting Started
+
+### 1. PostgreSQL起動
+
+```bash
+docker-compose up -d
+```
+
+## API Documentation
+
+Swagger UI:
+http://localhost:8080/swagger-ui/index.html

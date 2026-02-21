@@ -10,12 +10,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.demo.common.exception.GlobalExceptionHandler;
 import com.example.demo.dashboard.dto.DashboardResponseDto;
 import com.example.demo.dashboard.service.DashboardService;
 
 @WebMvcTest(DashboardController.class)
+@Import(GlobalExceptionHandler.class)
 class DashboardControllerTest {
 
         @Autowired
@@ -26,21 +29,19 @@ class DashboardControllerTest {
 
         @Test
         void getTodayDashboard_success() throws Exception {
-                // given
+
                 DashboardResponseDto response = new DashboardResponseDto(
                                 LocalDate.of(2025, 12, 12),
-                                2000, // totalCalories
-                                120, // totalProtein
-                                3L, // mealCount
-                                70.0, // todayWeight
-                                -0.5, // weightDiffFromYesterday
-                                500 // totalTrainingCalories
-                );
+                                2000,
+                                120,
+                                3L,
+                                70.0,
+                                -0.5,
+                                500);
 
                 when(dashboardService.getTodayDashboard())
                                 .thenReturn(response);
 
-                // when & then
                 mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.date").value("2025-12-12"))
@@ -54,25 +55,24 @@ class DashboardControllerTest {
 
         @Test
         void getTodayDashboard_internalServerError() throws Exception {
+
                 when(dashboardService.getTodayDashboard())
-                                .thenThrow(new RuntimeException("Internal Server Error"));
+                                .thenThrow(new RuntimeException("Boom"));
 
                 mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isInternalServerError())
-                                .andExpect(jsonPath("$.message").value("Internal Server Error"));
+                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
         }
 
         @Test
         void getTodayDashboard_serviceThrowsResponseStatusException() throws Exception {
-                // given
+
                 when(dashboardService.getTodayDashboard())
                                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
                                                 org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                                                 "Service unavailable"));
 
-                // when & then
                 mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isServiceUnavailable());
         }
-
 }

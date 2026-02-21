@@ -27,20 +27,26 @@ public class DashboardService {
         }
 
         public DashboardResponseDto getTodayDashboard() {
-                LocalDate today = LocalDate.now();
-                LocalDate yesterday = today.minusDays(1);
+                return buildDashboard(LocalDate.now());
+        }
 
-                Integer totalCalories = defaultZero(mealLogRepository.sumCaloriesByDate(today));
-                Integer totalProtein = defaultZero(mealLogRepository.sumProteinByDate(today));
-                Long mealCount = defaultZero(mealLogRepository.countByDate(today));
-                Integer trainingCalories = defaultZero(trainingLogRepository.sumCaloriesByDate(today));
+        public DashboardResponseDto getDashboardByDate(LocalDate date) {
+                return buildDashboard(date);
+        }
 
-                Double todayWeight = recordRepository.findByDate(today)
+        private DashboardResponseDto buildDashboard(LocalDate date) {
+                LocalDate yesterday = date.minusDays(1);
+
+                Integer totalCalories = defaultZero(mealLogRepository.sumCaloriesByDate(date));
+                Integer totalProtein = defaultZero(mealLogRepository.sumProteinByDate(date));
+                Long mealCount = defaultZero(mealLogRepository.countByDate(date));
+                Integer trainingCalories = defaultZero(trainingLogRepository.sumCaloriesByDate(date));
+
+                Double todayWeight = recordRepository.findByDate(date)
                                 .map(Record::getWeight)
                                 .orElse(null);
 
-                Double yesterdayWeight = recordRepository
-                                .findTopByDateOrderByIdDesc(yesterday)
+                Double yesterdayWeight = recordRepository.findTopByDateOrderByIdDesc(yesterday)
                                 .map(Record::getWeight)
                                 .orElse(null);
 
@@ -49,7 +55,7 @@ public class DashboardService {
                                 : null;
 
                 return new DashboardResponseDto(
-                                today,
+                                date,
                                 totalCalories,
                                 totalProtein,
                                 mealCount,

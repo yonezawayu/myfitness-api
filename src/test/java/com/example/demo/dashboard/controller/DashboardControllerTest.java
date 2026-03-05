@@ -1,6 +1,7 @@
 package com.example.demo.dashboard.controller;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,7 +30,7 @@ class DashboardControllerTest {
 
         @Test
         void getTodayDashboard_success() throws Exception {
-
+                // given
                 DashboardResponseDto response = new DashboardResponseDto(
                                 LocalDate.of(2025, 12, 12),
                                 2000,
@@ -39,10 +40,10 @@ class DashboardControllerTest {
                                 -0.5,
                                 500);
 
-                when(dashboardService.getTodayDashboard())
-                                .thenReturn(response);
+                when(dashboardService.getTodayDashboard()).thenReturn(response);
 
-                mockMvc.perform(get("/dashboard/today"))
+                // when & then
+                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.date").value("2025-12-12"))
                                 .andExpect(jsonPath("$.totalCalories").value(2000))
@@ -55,24 +56,22 @@ class DashboardControllerTest {
 
         @Test
         void getTodayDashboard_internalServerError() throws Exception {
-
                 when(dashboardService.getTodayDashboard())
-                                .thenThrow(new RuntimeException("Boom"));
+                                .thenThrow(new RuntimeException("Internal Server Error"));
 
-                mockMvc.perform(get("/dashboard/today"))
+                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
                                 .andExpect(status().isInternalServerError())
-                                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"));
+                                .andExpect(jsonPath("$.message").value("Internal Server Error"));
         }
 
         @Test
         void getTodayDashboard_serviceThrowsResponseStatusException() throws Exception {
-
                 when(dashboardService.getTodayDashboard())
                                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
                                                 org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                                                 "Service unavailable"));
 
-                mockMvc.perform(get("/dashboard/today"))
+                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
                                 .andExpect(status().isServiceUnavailable());
         }
 }

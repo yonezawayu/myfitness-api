@@ -26,6 +26,11 @@ spring:
     username: myfitness_user
     password: myfitness_pass
     driver-class-name: org.postgresql.Driver
+  security:
+    user:
+      name: admin
+      password: admin
+      roles: ADMIN
 
   jpa:
     hibernate:

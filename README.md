@@ -158,3 +158,22 @@ docker-compose up -d
 
 Swagger UI:
 http://localhost:8080/swagger-ui/index.html
+
+## Authentication (Basic Auth)
+
+All API endpoints require Basic Authentication.
+
+- username: `admin`
+- password: `admin`
+
+Swagger UI:
+
+1. Open `/swagger-ui/index.html`
+2. Click `Authorize`
+3. Enter credentials above, then execute APIs
+
+curl example:
+
+```bash
+curl -i -u admin:admin http://localhost:8080/dashboard/today
+```

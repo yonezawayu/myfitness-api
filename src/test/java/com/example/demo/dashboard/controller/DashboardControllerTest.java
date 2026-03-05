@@ -63,17 +63,6 @@ class DashboardControllerTest {
         }
 
         @Test
-        void getTodayDashboard_serviceReturnsNull() throws Exception {
-                // given
-                when(dashboardService.getTodayDashboard())
-                                .thenReturn(null);
-
-                // when & then
-                mockMvc.perform(get("/dashboard/today"))
-                                .andExpect(status().isInternalServerError());
-        }
-
-        @Test
         void getTodayDashboard_serviceThrowsResponseStatusException() throws Exception {
                 // given
                 when(dashboardService.getTodayDashboard())

@@ -1,41 +1,42 @@
 package com.myfitness.api.common.config;
 
+import com.myfitness.api.auth.jwt.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
         @Bean
-        SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
                 http
-                                // 今はAPI前提なのでCSRFはOFF（ブラウザフォーム運用しない前提）
                                 .csrf(csrf -> csrf.disable())
-
-                                // セッションは使わない（APIとしての基本形）
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                                // 認可ルール
                                 .authorizeHttpRequests(auth -> auth
-                                                // Swagger / OpenAPI は見れるように（ここは好みで要認証でもOK）
                                                 .requestMatchers(
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html",
                                                                 "/v3/api-docs/**")
                                                 .permitAll()
-
-                                                // それ以外は認証必須
+                                                .requestMatchers(HttpMethod.POST, "/users").permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                                                 .anyRequest().authenticated())
-
-                                // まずはBasic認証でOK（JWTは次でやる）
-                                .httpBasic(Customizer.withDefaults());
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
+        }
+
+        @Bean
+        public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+                return config.getAuthenticationManager();
         }
 }

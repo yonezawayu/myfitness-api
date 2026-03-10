@@ -1,7 +1,6 @@
 package com.myfitness.api.dashboard.controller;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -10,16 +9,18 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.myfitness.api.auth.jwt.JwtFilter;
 import com.myfitness.api.common.exception.GlobalExceptionHandler;
-import com.myfitness.api.dashboard.controller.DashboardController;
 import com.myfitness.api.dashboard.dto.DashboardResponseDto;
 import com.myfitness.api.dashboard.service.DashboardService;
 
 @WebMvcTest(DashboardController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class DashboardControllerTest {
 
@@ -29,9 +30,11 @@ class DashboardControllerTest {
         @MockBean
         private DashboardService dashboardService;
 
+        @MockBean
+        private JwtFilter jwtFilter;
+
         @Test
         void getTodayDashboard_success() throws Exception {
-                // given
                 DashboardResponseDto response = new DashboardResponseDto(
                                 LocalDate.of(2025, 12, 12),
                                 2000,
@@ -43,8 +46,7 @@ class DashboardControllerTest {
 
                 when(dashboardService.getTodayDashboard()).thenReturn(response);
 
-                // when & then
-                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
+                mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.date").value("2025-12-12"))
                                 .andExpect(jsonPath("$.totalCalories").value(2000))
@@ -60,7 +62,7 @@ class DashboardControllerTest {
                 when(dashboardService.getTodayDashboard())
                                 .thenThrow(new RuntimeException("Internal Server Error"));
 
-                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
+                mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isInternalServerError())
                                 .andExpect(jsonPath("$.message").value("Internal Server Error"));
         }
@@ -72,7 +74,7 @@ class DashboardControllerTest {
                                                 org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                                                 "Service unavailable"));
 
-                mockMvc.perform(get("/dashboard/today").with(httpBasic("admin", "admin")))
+                mockMvc.perform(get("/dashboard/today"))
                                 .andExpect(status().isServiceUnavailable());
         }
 }

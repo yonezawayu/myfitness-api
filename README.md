@@ -1,179 +1,291 @@
-# 📊 Dashboard API
+MyFitness Tracker API
 
-## API仕様（Swagger / OpenAPI）
+MyFitness Tracker API は
+食事ログ・トレーニングログ・体重ログを管理し、日々の健康データを記録・集計するバックエンド API です。
 
-本 API の詳細な仕様およびリクエスト・レスポンス例は
+本プロジェクトは バックエンドエンジニア向けポートフォリオとして、
 
-Swagger（OpenAPI）で確認できます。
+Spring Boot
 
-- URL: http://localhost:8080/swagger-ui.html
-- Dashboard API の正常系 / エラー系レスポンス例を掲載
+Spring Security
 
-## 概要
+JWT認証
 
-Dashboard API は、
+REST API設計
 
-**その日の食事・トレーニング・体重データを集計して一覧で返す API** です。
+DB設計
 
-- 食事ログ（MealLog）
-- トレーニングログ（TrainingLog）
-- 体重ログ（Record）
+テスト
 
-これら複数ドメインのデータを横断して集計し、
+Docker環境
 
-**1 日の状態をダッシュボード用データとして提供**します。
+などの実装を目的として開発しています。
 
----
+機能
 
-## エンドポイント
+現在実装済みの主な機能
 
-```
-GET /dashboard/today
+ユーザー登録
 
-```
+JWTログイン認証
 
----
+JWTトークン発行
 
-## レスポンス仕様
+認証ユーザー取得 /users/me
 
-### 正常時（200 OK）
+食事ログ管理
 
-```json
-{
-  "date": "2025-12-12",
-  "totalCalories": 2000,
-  "totalProtein": 120,
-  "mealCount": 3,
-  "todayWeight": 70.0,
-  "weightDiffFromYesterday": -0.5,
-  "totalTrainingCalories": 500
-}
-```
+トレーニングログ管理
 
-### フィールド説明
+体重ログ管理
 
-| フィールド名            | 型                | 説明                                         |
-| ----------------------- | ----------------- | -------------------------------------------- |
-| date                    | string (ISO-8601) | 対象日                                       |
-| totalCalories           | int               | 食事ログの合計カロリー（未登録時は 0）       |
-| totalProtein            | int               | 食事ログの合計タンパク質量（未登録時は 0）   |
-| mealCount               | long              | 食事ログ件数（未登録時は 0）                 |
-| todayWeight             | double / null     | 当日の体重（未登録時は null）                |
-| weightDiffFromYesterday | double / null     | 前日との差分（比較不可の場合は null）        |
-| totalTrainingCalories   | int               | トレーニング消費カロリー合計（未登録時は 0） |
+ダッシュボード集計 API
 
----
+Swagger APIドキュメント
 
-## 異常系レスポンス
+Controller / Service テスト
 
-本アプリケーションでは、すべてのエラーレスポンスを
+API Documentation
 
-`@RestControllerAdvice` により共通形式で返却します。
+Swagger UI から API を確認できます。
 
-※ 業務エラー（NOT_FOUND 等）は今後の拡張で追加予定
-
-### 500 Internal Server Error
-
-```json
-{
-  "message": "Internal Server Error",
-  "errors": null
-}
-```
-
-### 発生条件
-
-- Service 層で想定外例外が発生した場合
-- Dashboard データ生成に失敗した場合
-
----
-
-## 実装ポイント
-
-### Service 層での集計責務
-
-- Controller では **集計ロジックを一切持たない**
-  - リクエスト受付とレスポンス返却のみを担当
-  - ビジネスロジックや集計処理は持たない
-- DashboardService が以下を担当
-  - 各 Repository から日付単位でデータ取得
-  - null 値の安全なハンドリング
-  - 体重差分の計算（当日・前日両方存在する場合のみ）
-
----
-
-### null / データ無し日の設計方針
-
-| 項目                     | 方針              |
-| ------------------------ | ----------------- |
-| 数値系（カロリー・件数） | 0 を返却          |
-| 体重                     | 未登録時は null   |
-| 体重差分                 | 比較不可時は null |
-
-👉 **フロント側での扱いやすさを優先**
-
----
-
-## テスト方針
-
-### 実装済みテスト
-
-- DashboardServiceTest
-  - 正常系
-  - データ無し日の集計
-  - 体重差分の計算
-- DashboardControllerTest
-  - 正常レスポンス
-  - Service 例外時の 500 エラー
-
----
-
-## 設計上の意図
-
-- **「一覧画面用 API」専用に最適化**
-- 複数ドメインをまたぐ集計処理の練習
-- Service / Controller / ExceptionHandler の責務分離を意識
-
-## Tech Stack
-
-- Java 17
-- Spring Boot 3.4.x
-- JPA / Hibernate
-- PostgreSQL (Docker)
-- Swagger (springdoc-openapi)
-- JUnit 5
-- GitHub Actions (CI)
-
----
-
-## Getting Started
-
-### 1. PostgreSQL起動
-
-```bash
-docker-compose up -d
-```
-
-## API Documentation
-
-Swagger UI:
 http://localhost:8080/swagger-ui/index.html
 
-## Authentication (Basic Auth)
+Swaggerでは
 
-All API endpoints require Basic Authentication.
+API仕様
 
-- username: `admin`
-- password: `admin`
+Request / Response例
 
-Swagger UI:
+JWT認証付き実行
 
-1. Open `/swagger-ui/index.html`
-2. Click `Authorize`
-3. Enter credentials above, then execute APIs
+を確認できます。
 
-curl example:
+Authentication
 
-```bash
-curl -i -u admin:admin http://localhost:8080/dashboard/today
-```
+本 API は JWT (JSON Web Token) を使用した認証方式を採用しています。
+
+認証フロー
+
+/auth/login でログイン
+
+JWTトークンを取得
+
+Authorization: Bearer <token> を付与してAPIを呼び出す
+
+Login API
+POST /auth/login
+
+request
+
+{
+"email": "test@example.com",
+"password": "password"
+}
+
+response
+
+{
+"token": "eyJhbGciOiJIUzM4NCJ9..."
+}
+認証API例
+GET /users/me
+
+curl example
+
+curl -H "Authorization: Bearer <token>" \
+http://localhost:8080/users/me
+
+response
+
+{
+"id": 1,
+"email": "test@example.com",
+"role": "USER"
+}
+Dashboard API
+
+Dashboard API は
+
+その日の食事・トレーニング・体重データを集計して返す API です。
+
+複数ドメインのデータを横断して
+
+食事カロリー
+
+タンパク質量
+
+食事回数
+
+体重
+
+トレーニング消費カロリー
+
+などをまとめて返します。
+
+Endpoint
+GET /dashboard/today
+Response Example
+{
+"date": "2025-12-12",
+"totalCalories": 2000,
+"totalProtein": 120,
+"mealCount": 3,
+"todayWeight": 70.0,
+"weightDiffFromYesterday": -0.5,
+"totalTrainingCalories": 500
+}
+フィールド説明
+field type description
+date string 対象日
+totalCalories int 食事ログの合計カロリー
+totalProtein int 食事ログの合計タンパク質
+mealCount long 食事ログ件数
+todayWeight double / null 当日の体重
+weightDiffFromYesterday double / null 前日との差分
+totalTrainingCalories int トレーニング消費カロリー
+Error Response
+
+本アプリケーションでは
+@RestControllerAdvice により 共通エラーレスポンス形式 を採用しています。
+
+Example
+
+{
+"message": "Internal Server Error",
+"errors": null
+}
+Architecture
+
+本プロジェクトでは
+
+レイヤードアーキテクチャ を採用しています。
+
+controller
+↓
+service
+↓
+repository
+↓
+entity
+
+責務分離
+
+Controller
+
+HTTPリクエスト受付
+
+レスポンス返却
+
+Service
+
+ビジネスロジック
+
+集計処理
+
+Repository
+
+DBアクセス
+
+Tech Stack
+
+Java 17
+
+Spring Boot 3
+
+Spring Security
+
+JWT Authentication
+
+JPA / Hibernate
+
+PostgreSQL
+
+Docker
+
+Swagger (springdoc-openapi)
+
+JUnit5
+
+Mockito
+
+GitHub
+
+Database
+
+PostgreSQL を Docker で起動します。
+
+主要テーブル
+
+users
+meal_logs
+training_logs
+records
+Getting Started
+1 Docker起動
+open -a Docker
+2 Database起動
+docker compose up -d
+3 Spring Boot起動
+./mvnw spring-boot:run
+4 API確認
+
+Swagger UI
+
+http://localhost:8080/swagger-ui/index.html
+Testing
+
+テストには
+
+JUnit5
+
+Mockito
+
+を使用しています。
+
+テスト実行
+
+./mvnw test
+
+現在のテスト
+
+DashboardControllerTest
+DashboardServiceTest
+Project Structure
+com.myfitness.api
+│
+├ auth
+│
+├ common
+│
+├ user
+│
+├ meal
+│
+├ training
+│
+├ record
+│
+└ dashboard
+Development Status
+
+現在の開発状況
+
+ユーザー認証 ✓
+JWT認証 ✓
+Swagger ✓
+食事ログ ✓
+トレーニングログ ✓
+体重ログ ✓
+ダッシュボード ✓
+
+今後の予定
+
+Foodマスタ
+Exerciseマスタ
+カロリー計算ロジック
+栄養計算
+統計API
+License
+
+MIT License

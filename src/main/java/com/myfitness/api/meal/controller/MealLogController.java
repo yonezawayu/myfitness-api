@@ -2,6 +2,7 @@ package com.myfitness.api.meal.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,27 +24,23 @@ public class MealLogController {
         this.mealLogService = mealLogService;
     }
 
-    // 全件取得
     @GetMapping
     public ResponseEntity<List<MealLogResponseDto>> getAll() {
         return ResponseEntity.ok(mealLogService.getAll());
     }
 
-    // 詳細取得
     @GetMapping("/{id}")
     public ResponseEntity<MealLogResponseDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(mealLogService.getById(id));
     }
 
-    // 新規作成
-    @PostMapping("/add")
+    @PostMapping
     public ResponseEntity<MealLogResponseDto> create(
             @Valid @RequestBody MealLogRequestDto request) {
         MealLogResponseDto created = mealLogService.create(request);
-        return ResponseEntity.ok(created);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // 更新
     @PutMapping("/{id}")
     public ResponseEntity<MealLogResponseDto> update(
             @PathVariable Long id,
@@ -51,7 +48,6 @@ public class MealLogController {
         return ResponseEntity.ok(mealLogService.update(id, request));
     }
 
-    // 削除
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         mealLogService.delete(id);

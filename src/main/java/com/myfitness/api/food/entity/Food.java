@@ -62,4 +62,36 @@ public class Food {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public BigDecimal getCaloriesPer100g() {
+        return caloriesPer100g;
+    }
+
+    public BigDecimal getProteinPer100g() {
+        return proteinPer100g;
+    }
+
+    public BigDecimal getFatPer100g() {
+        return fatPer100g;
+    }
+
+    public BigDecimal getCarbPer100g() {
+        return carbPer100g;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }

@@ -1,27 +1,31 @@
 package com.myfitness.api.meal.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class MealLogResponseDto {
 
     private Long id;
     private String mealName;
-    private Integer calories;
     private LocalDate date;
     private String memo;
-    private Double protein;
+
+    private BigDecimal totalCalories;
+    private BigDecimal totalProtein;
 
     public MealLogResponseDto() {
     }
 
-    public MealLogResponseDto(Long id, String mealName, Integer calories,
-            LocalDate date, String memo, Double protein) {
+    public MealLogResponseDto(Long id, String mealName,
+            LocalDate date, String memo,
+            BigDecimal totalCalories, BigDecimal totalProtein) {
+
         this.id = id;
         this.mealName = mealName;
-        this.calories = calories;
         this.date = date;
         this.memo = memo;
-        this.protein = protein;
+        this.totalCalories = totalCalories;
+        this.totalProtein = totalProtein;
     }
 
     public Long getId() {
@@ -32,10 +36,6 @@ public class MealLogResponseDto {
         return mealName;
     }
 
-    public Integer getCalories() {
-        return calories;
-    }
-
     public LocalDate getDate() {
         return date;
     }
@@ -44,7 +44,11 @@ public class MealLogResponseDto {
         return memo;
     }
 
-    public Double getProtein() {
-        return protein;
+    public BigDecimal getTotalCalories() {
+        return totalCalories;
+    }
+
+    public BigDecimal getTotalProtein() {
+        return totalProtein;
     }
 }

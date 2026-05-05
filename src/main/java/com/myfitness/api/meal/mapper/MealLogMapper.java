@@ -3,7 +3,6 @@ package com.myfitness.api.meal.mapper;
 import org.springframework.stereotype.Component;
 
 import com.myfitness.api.meal.dto.MealLogRequestDto;
-import com.myfitness.api.meal.dto.MealLogResponseDto;
 import com.myfitness.api.meal.entity.MealLog;
 
 @Component
@@ -20,17 +19,6 @@ public class MealLogMapper {
         entity.setProtein(dto.getProtein());
 
         return entity;
-    }
-
-    // Entity → ResponseDto
-    public MealLogResponseDto toResponseDto(MealLog entity) {
-        return new MealLogResponseDto(
-                entity.getId(),
-                entity.getMealName(),
-                entity.getCalories(),
-                entity.getDate(),
-                entity.getMemo(),
-                entity.getProtein());
     }
 
     // Entity 更新用（PUT）

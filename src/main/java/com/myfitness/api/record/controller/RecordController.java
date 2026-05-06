@@ -31,7 +31,7 @@ public class RecordController {
         return ResponseEntity.ok(recordService.getRecordById(id));
     }
 
-    @PostMapping("/add")
+    @PostMapping
     public ResponseEntity<RecordResponseDto> createRecord(
             @Valid @RequestBody RecordRequestDto request) {
         return ResponseEntity.ok(recordService.createRecord(request));

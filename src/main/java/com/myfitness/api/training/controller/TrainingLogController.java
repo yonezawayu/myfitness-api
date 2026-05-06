@@ -32,7 +32,7 @@ public class TrainingLogController {
         return ResponseEntity.ok(trainingLogService.getById(id));
     }
 
-    @PostMapping("/add")
+    @PostMapping
     public ResponseEntity<TrainingLogResponseDto> create(
             @RequestBody TrainingLogRequestDto request) {
         return ResponseEntity.ok(trainingLogService.create(request));

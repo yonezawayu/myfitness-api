@@ -1,10 +1,12 @@
 package com.myfitness.api.dashboard.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.springframework.stereotype.Service;
 
 import com.myfitness.api.dashboard.dto.DashboardResponseDto;
+import com.myfitness.api.meal.repository.MealItemRepository;
 import com.myfitness.api.meal.repository.MealLogRepository;
 import com.myfitness.api.record.entity.Record;
 import com.myfitness.api.record.repository.RecordRepository;
@@ -14,14 +16,18 @@ import com.myfitness.api.training.repository.TrainingLogRepository;
 public class DashboardService {
 
         private final MealLogRepository mealLogRepository;
+        private final MealItemRepository mealItemRepository;
         private final RecordRepository recordRepository;
         private final TrainingLogRepository trainingLogRepository;
 
         public DashboardService(
                         MealLogRepository mealLogRepository,
+                        MealItemRepository mealItemRepository,
                         RecordRepository recordRepository,
                         TrainingLogRepository trainingLogRepository) {
+
                 this.mealLogRepository = mealLogRepository;
+                this.mealItemRepository = mealItemRepository;
                 this.recordRepository = recordRepository;
                 this.trainingLogRepository = trainingLogRepository;
         }
@@ -35,11 +41,16 @@ public class DashboardService {
         }
 
         private DashboardResponseDto buildDashboard(LocalDate date) {
+
                 LocalDate yesterday = date.minusDays(1);
 
-                Integer totalCalories = defaultZero(mealLogRepository.sumCaloriesByDate(date));
-                Integer totalProtein = defaultZero(mealLogRepository.sumProteinByDate(date));
+                // 🔥 ここをMealItemベースに変更
+                Integer totalCalories = defaultZero(mealItemRepository.sumCaloriesByDate(date));
+                Integer totalProtein = defaultZero(mealItemRepository.sumProteinByDate(date));
+
+                // 食事回数はMealLogのままでOK
                 Long mealCount = defaultZero(mealLogRepository.countByDate(date));
+
                 Integer trainingCalories = defaultZero(trainingLogRepository.sumCaloriesByDate(date));
 
                 Double todayWeight = recordRepository.findByDate(date)
@@ -64,11 +75,17 @@ public class DashboardService {
                                 trainingCalories);
         }
 
+        // ===== null対策 =====
+
         private int defaultZero(Integer value) {
                 return value == null ? 0 : value;
         }
 
         private long defaultZero(Long value) {
                 return value == null ? 0L : value;
+        }
+
+        private int defaultZero(BigDecimal value) {
+                return value == null ? 0 : value.intValue();
         }
 }

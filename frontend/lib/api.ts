@@ -32,6 +32,30 @@ export type CreateFoodRequest = {
   proteinPer100g: number;
 };
 
+export type Food = {
+  id: number;
+  name: string;
+  caloriesPer100g: number;
+  proteinPer100g: number;
+};
+
+export type CreateMealLogRequest = {
+  mealName: string;
+  date: string;
+};
+
+export type MealLogResponse = {
+  id: number;
+  mealName: string;
+  date: string;
+};
+
+export type CreateMealItemRequest = {
+  mealLogId: number;
+  foodId: number;
+  amountG: number;
+};
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
@@ -125,5 +149,74 @@ export async function createFood(token: string, request: CreateFoodRequest): Pro
 
   if (!response.ok) {
     throw new Error("食品の保存に失敗しました。入力内容を確認してください。");
+  }
+}
+
+export async function fetchFoods(token: string): Promise<Food[]> {
+  const response = await fetch(`${API_BASE_URL}/foods`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Food一覧の取得に失敗しました。");
+  }
+
+  return response.json();
+}
+
+export async function createMealLog(token: string, request: CreateMealLogRequest): Promise<MealLogResponse> {
+  const response = await fetch(`${API_BASE_URL}/meal-logs`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      mealName: request.mealName,
+      calories: 0,
+      date: request.date,
+      memo: "",
+      protein: 0
+    })
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("MealLogの保存に失敗しました。入力内容を確認してください。");
+  }
+
+  return response.json();
+}
+
+export async function createMealItem(token: string, request: CreateMealItemRequest): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/meal-items`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      mealLogId: request.mealLogId,
+      foodId: request.foodId,
+      quantityG: request.amountG
+    })
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("MealItemの保存に失敗しました。入力内容を確認してください。");
   }
 }

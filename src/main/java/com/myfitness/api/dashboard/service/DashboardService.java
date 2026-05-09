@@ -53,7 +53,7 @@ public class DashboardService {
 
                 Integer trainingCalories = defaultZero(trainingLogRepository.sumCaloriesByDate(date));
 
-                Double todayWeight = recordRepository.findByDate(date)
+                Double todayWeight = recordRepository.findTopByDateOrderByIdDesc(date)
                                 .map(Record::getWeight)
                                 .orElse(null);
 

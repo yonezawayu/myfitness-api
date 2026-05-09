@@ -57,13 +57,22 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-emerald-700">MyFitness API</p>
             <h1 className="mt-2 text-2xl font-semibold text-gray-950">今日のダッシュボード</h1>
           </div>
-          <button
-            className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 sm:w-auto"
-            type="button"
-            onClick={handleLogout}
-          >
-            ログアウト
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              className="w-full rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-800 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/records/new")}
+            >
+              体重記録を追加
+            </button>
+            <button
+              className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 sm:w-auto"
+              type="button"
+              onClick={handleLogout}
+            >
+              ログアウト
+            </button>
+          </div>
         </header>
 
         {isLoading ? <p className="text-gray-600">読み込み中...</p> : null}

@@ -14,6 +14,12 @@ export type DashboardResponse = {
   totalTrainingCalories: number;
 };
 
+export type CreateRecordRequest = {
+  weight: number;
+  calories: number;
+  date: string;
+};
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
@@ -47,4 +53,23 @@ export async function fetchTodayDashboard(token: string): Promise<DashboardRespo
   }
 
   return response.json();
+}
+
+export async function createRecord(token: string, request: CreateRecordRequest): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/records`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Recordの保存に失敗しました。入力内容を確認してください。");
+  }
 }

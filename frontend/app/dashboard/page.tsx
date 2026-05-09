@@ -66,6 +66,13 @@ export default function DashboardPage() {
               体重記録を追加
             </button>
             <button
+              className="w-full rounded-md bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/training/new")}
+            >
+              トレーニング記録を追加
+            </button>
+            <button
               className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 sm:w-auto"
               type="button"
               onClick={handleLogout}

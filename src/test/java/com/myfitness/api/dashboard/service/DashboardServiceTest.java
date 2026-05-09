@@ -53,7 +53,7 @@ class DashboardServiceTest {
                 Record yesterdayRecord = new Record();
                 yesterdayRecord.setWeight(70.5);
 
-                when(recordRepository.findByDate(today)).thenReturn(Optional.of(todayRecord));
+                when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.of(todayRecord));
                 when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.of(yesterdayRecord));
                 when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(500);
 
@@ -71,13 +71,14 @@ class DashboardServiceTest {
         @Test
         void getTodayDashboard_noData() {
                 LocalDate today = LocalDate.now();
+                LocalDate yesterday = today.minusDays(1);
 
                 when(mealItemRepository.sumCaloriesByDate(today)).thenReturn(BigDecimal.ZERO);
                 when(mealItemRepository.sumProteinByDate(today)).thenReturn(BigDecimal.ZERO);
                 when(mealLogRepository.countByDate(today)).thenReturn(null);
 
-                when(recordRepository.findByDate(today)).thenReturn(Optional.empty());
-                when(recordRepository.findTopByDateOrderByIdDesc(today.minusDays(1))).thenReturn(Optional.empty());
+                when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.empty());
+                when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.empty());
                 when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(null);
 
                 DashboardResponseDto result = dashboardService.getTodayDashboard();
@@ -106,7 +107,7 @@ class DashboardServiceTest {
                 when(mealItemRepository.sumProteinByDate(today)).thenReturn(BigDecimal.valueOf(120));
                 when(mealLogRepository.countByDate(today)).thenReturn(3L);
 
-                when(recordRepository.findByDate(today)).thenReturn(Optional.of(todayRecord));
+                when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.of(todayRecord));
                 when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.of(yesterdayRecord));
                 when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(400);
 

@@ -73,6 +73,13 @@ export default function DashboardPage() {
               トレーニング記録を追加
             </button>
             <button
+              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-50 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/foods/new")}
+            >
+              食品を追加
+            </button>
+            <button
               className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 sm:w-auto"
               type="button"
               onClick={handleLogout}

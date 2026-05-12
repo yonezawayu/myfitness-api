@@ -73,6 +73,13 @@ export default function DashboardPage() {
               食事を追加
             </button>
             <button
+              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-950 ring-1 ring-gray-200 transition hover:bg-gray-50 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/meals")}
+            >
+              食事履歴
+            </button>
+            <button
               className="w-full rounded-md bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 sm:w-auto"
               type="button"
               onClick={() => router.push("/training/new")}
@@ -85,6 +92,13 @@ export default function DashboardPage() {
               onClick={() => router.push("/foods/new")}
             >
               食品を追加
+            </button>
+            <button
+              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-50 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/foods")}
+            >
+              食品一覧
             </button>
             <button
               className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50 sm:w-auto"

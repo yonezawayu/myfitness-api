@@ -50,6 +50,15 @@ export type MealLogResponse = {
   date: string;
 };
 
+export type MealItemResponse = {
+  id: number;
+  mealLogId: number;
+  foodId: number;
+  quantityG: number;
+  calories: number;
+  protein: number;
+};
+
 export type CreateMealItemRequest = {
   mealLogId: number;
   foodId: number;
@@ -219,4 +228,42 @@ export async function createMealItem(token: string, request: CreateMealItemReque
   if (!response.ok) {
     throw new Error("MealItemの保存に失敗しました。入力内容を確認してください。");
   }
+}
+
+export async function fetchMealLogs(token: string): Promise<MealLogResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/meal-logs`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Meal履歴の取得に失敗しました。");
+  }
+
+  return response.json();
+}
+
+export async function fetchMealItems(token: string, mealLogId: number): Promise<MealItemResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/meal-items/meal-log/${mealLogId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("MealItemの取得に失敗しました。");
+  }
+
+  return response.json();
 }

@@ -6,6 +6,7 @@ import {
   fetchFoods,
   fetchMealItems,
   fetchMealLogs,
+  deleteMealLog,
   Food,
   MealItemResponse,
   MealLogResponse,
@@ -22,6 +23,7 @@ export default function MealsPage() {
   const [foods, setFoods] = useState<Food[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingMealId, setDeletingMealId] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -60,6 +62,33 @@ export default function MealsPage() {
 
   function foodName(foodId: number) {
     return foods.find((food) => food.id === foodId)?.name ?? `Food #${foodId}`;
+  }
+
+  async function handleDelete(mealId: number) {
+    if (!window.confirm("削除しますか？")) {
+      return;
+    }
+
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+
+    setError("");
+    setDeletingMealId(mealId);
+
+    try {
+      await deleteMealLog(token, mealId);
+      setMeals((currentMeals) => currentMeals.filter((meal) => meal.id !== mealId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Mealの削除に失敗しました。");
+      if (err instanceof Error && err.message.includes("ログイン")) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+      }
+    } finally {
+      setDeletingMealId(null);
+    }
   }
 
   return (
@@ -102,9 +131,19 @@ export default function MealsPage() {
           <section className="space-y-4">
             {meals.map((meal) => (
               <article key={meal.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-                  <h2 className="text-lg font-semibold text-gray-950">{meal.mealName}</h2>
-                  <p className="text-sm text-gray-500">{meal.date}</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-950">{meal.mealName}</h2>
+                    <p className="mt-1 text-sm text-gray-500">{meal.date}</p>
+                  </div>
+                  <button
+                    className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                    type="button"
+                    onClick={() => handleDelete(meal.id)}
+                    disabled={deletingMealId === meal.id}
+                  >
+                    {deletingMealId === meal.id ? "削除中..." : "削除"}
+                  </button>
                 </div>
 
                 {meal.items.length > 0 ? (

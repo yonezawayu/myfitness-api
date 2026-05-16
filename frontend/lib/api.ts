@@ -26,6 +26,13 @@ export type CreateTrainingLogRequest = {
   date: string;
 };
 
+export type TrainingLogResponse = {
+  id: number;
+  trainingName: string;
+  caloriesBurned: number;
+  date: string;
+};
+
 export type CreateFoodRequest = {
   name: string;
   caloriesPer100g: number;
@@ -282,5 +289,41 @@ export async function deleteMealLog(token: string, mealLogId: number): Promise<v
 
   if (!response.ok) {
     throw new Error("Mealの削除に失敗しました。");
+  }
+}
+
+export async function fetchTrainingLogs(token: string): Promise<TrainingLogResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/training-logs`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("トレーニング履歴の取得に失敗しました。");
+  }
+
+  return response.json();
+}
+
+export async function deleteTrainingLog(token: string, trainingLogId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/training-logs/${trainingLogId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("トレーニング記録の削除に失敗しました。");
   }
 }

@@ -66,6 +66,13 @@ export default function DashboardPage() {
               体重記録を追加
             </button>
             <button
+              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-950 ring-1 ring-gray-200 transition hover:bg-gray-50 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/records")}
+            >
+              体重履歴
+            </button>
+            <button
               className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 sm:w-auto"
               type="button"
               onClick={() => router.push("/meals/new")}

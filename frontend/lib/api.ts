@@ -20,6 +20,12 @@ export type CreateRecordRequest = {
   date: string;
 };
 
+export type RecordResponse = {
+  id: number;
+  weight: number;
+  date: string;
+};
+
 export type CreateTrainingLogRequest = {
   trainingName: string;
   caloriesBurned: number;
@@ -325,5 +331,41 @@ export async function deleteTrainingLog(token: string, trainingLogId: number): P
 
   if (!response.ok) {
     throw new Error("トレーニング記録の削除に失敗しました。");
+  }
+}
+
+export async function fetchRecords(token: string): Promise<RecordResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/records`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("体重履歴の取得に失敗しました。");
+  }
+
+  return response.json();
+}
+
+export async function deleteRecord(token: string, recordId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/records/${recordId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("体重記録の削除に失敗しました。");
   }
 }

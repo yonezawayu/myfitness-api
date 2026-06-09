@@ -57,7 +57,7 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-emerald-700">MyFitness API</p>
             <h1 className="mt-2 text-2xl font-semibold text-gray-950">今日のダッシュボード</h1>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
             <button
               className="w-full rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-800 sm:w-auto"
               type="button"
@@ -99,6 +99,13 @@ export default function DashboardPage() {
               onClick={() => router.push("/training")}
             >
               トレーニング履歴
+            </button>
+            <button
+              className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-950 ring-1 ring-gray-200 transition hover:bg-gray-50 sm:w-auto"
+              type="button"
+              onClick={() => router.push("/training-sessions")}
+            >
+              本格トレーニング履歴
             </button>
             <button
               className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-50 sm:w-auto"

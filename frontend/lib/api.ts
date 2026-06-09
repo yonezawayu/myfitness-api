@@ -39,6 +39,28 @@ export type TrainingLogResponse = {
   date: string;
 };
 
+export type TrainingSetResponse = {
+  id: number;
+  setNumber: number;
+  weightKg: number | null;
+  reps: number;
+  memo: string | null;
+};
+
+export type TrainingExerciseResponse = {
+  id: number;
+  exerciseName: string;
+  memo: string | null;
+  sets: TrainingSetResponse[];
+};
+
+export type TrainingSessionResponse = {
+  id: number;
+  date: string;
+  memo: string | null;
+  exercises: TrainingExerciseResponse[];
+};
+
 export type CreateFoodRequest = {
   name: string;
   caloriesPer100g: number;
@@ -332,6 +354,25 @@ export async function deleteTrainingLog(token: string, trainingLogId: number): P
   if (!response.ok) {
     throw new Error("トレーニング記録の削除に失敗しました。");
   }
+}
+
+export async function fetchTrainingSessions(token: string): Promise<TrainingSessionResponse[]> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("本格トレーニング履歴の取得に失敗しました。");
+  }
+
+  return response.json();
 }
 
 export async function fetchRecords(token: string): Promise<RecordResponse[]> {

@@ -22,8 +22,15 @@ function estimatedOneRepMax(trainingSet: TrainingSetResponse) {
   return trainingSet.weightKg * (1 + trainingSet.reps / 30);
 }
 
-function exerciseVolume(exercise: TrainingExerciseResponse) {
-  return exercise.sets.reduce((total, trainingSet) => total + setVolume(trainingSet), 0);
+function exerciseStats(exercise: TrainingExerciseResponse) {
+  return exercise.sets.reduce(
+    (stats, trainingSet) => ({
+      totalSets: stats.totalSets + 1,
+      totalReps: stats.totalReps + trainingSet.reps,
+      totalVolume: stats.totalVolume + setVolume(trainingSet)
+    }),
+    { totalSets: 0, totalReps: 0, totalVolume: 0 }
+  );
 }
 
 function sessionStats(session: TrainingSessionResponse) {
@@ -37,7 +44,7 @@ function sessionStats(session: TrainingSessionResponse) {
 
       return stats;
     },
-    { totalSets: 0, totalReps: 0, totalVolume: 0 }
+    { exerciseCount: session.exercises.length, totalSets: 0, totalReps: 0, totalVolume: 0 }
   );
 }
 
@@ -52,6 +59,7 @@ export default function TrainingSessionsPage() {
   const [sessions, setSessions] = useState<TrainingSessionResponse[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -76,6 +84,20 @@ export default function TrainingSessionsPage() {
         setIsLoading(false);
       });
   }, [router]);
+
+  function toggleExercise(exerciseId: number) {
+    setCollapsedExerciseIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      if (nextIds.has(exerciseId)) {
+        nextIds.delete(exerciseId);
+      } else {
+        nextIds.add(exerciseId);
+      }
+
+      return nextIds;
+    });
+  }
 
   return (
     <main className="min-h-screen px-5 py-8">
@@ -118,7 +140,7 @@ export default function TrainingSessionsPage() {
         {sessions.length > 0 ? (
           <section className="space-y-5">
             {sessions.map((session) => {
-              const stats = sessionStats(session);
+              const sessionSummary = sessionStats(session);
 
               return (
                 <article key={session.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -128,19 +150,23 @@ export default function TrainingSessionsPage() {
                       <h2 className="mt-1 text-xl font-semibold text-gray-950">{session.date}</h2>
                       {session.memo ? <p className="mt-2 text-sm text-gray-600">{session.memo}</p> : null}
                     </div>
-                    <div className="grid grid-cols-3 gap-2 sm:min-w-80">
+                    <div className="grid grid-cols-2 gap-2 sm:min-w-[420px] sm:grid-cols-4">
+                      <div className="rounded-md bg-gray-50 px-3 py-2">
+                        <p className="text-xs font-medium text-gray-500">Exercises</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-950">{sessionSummary.exerciseCount}</p>
+                      </div>
                       <div className="rounded-md bg-gray-50 px-3 py-2">
                         <p className="text-xs font-medium text-gray-500">Sets</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-950">{stats.totalSets}</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-950">{sessionSummary.totalSets}</p>
                       </div>
                       <div className="rounded-md bg-gray-50 px-3 py-2">
                         <p className="text-xs font-medium text-gray-500">Reps</p>
-                        <p className="mt-1 text-lg font-semibold text-gray-950">{stats.totalReps}</p>
+                        <p className="mt-1 text-lg font-semibold text-gray-950">{sessionSummary.totalReps}</p>
                       </div>
                       <div className="rounded-md bg-gray-50 px-3 py-2">
                         <p className="text-xs font-medium text-gray-500">Volume</p>
                         <p className="mt-1 text-lg font-semibold text-gray-950">
-                          {formatNumber(stats.totalVolume, 0)}
+                          {formatNumber(sessionSummary.totalVolume, 0)}
                         </p>
                       </div>
                     </div>
@@ -151,58 +177,89 @@ export default function TrainingSessionsPage() {
                       <p className="rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600">種目がありません。</p>
                     ) : null}
 
-                    {session.exercises.map((exercise) => (
-                      <section key={exercise.id} className="rounded-md border border-gray-200">
-                        <div className="flex flex-col gap-2 border-b border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
-                          <div>
-                            <h3 className="text-base font-semibold text-gray-950">{exercise.exerciseName}</h3>
-                            {exercise.memo ? <p className="mt-1 text-sm text-gray-600">{exercise.memo}</p> : null}
-                          </div>
-                          <p className="text-sm font-medium text-gray-700">
-                            Volume {formatNumber(exerciseVolume(exercise), 0)}
-                          </p>
-                        </div>
+                    {session.exercises.map((exercise) => {
+                      const exerciseSummary = exerciseStats(exercise);
+                      const isCollapsed = collapsedExerciseIds.has(exercise.id);
 
-                        {exercise.sets.length > 0 ? (
-                          <div className="overflow-x-auto">
-                            <table className="w-full min-w-[520px] text-left text-sm">
-                              <thead className="text-gray-500">
-                                <tr>
-                                  <th className="px-4 py-2 font-medium">Set</th>
-                                  <th className="px-4 py-2 font-medium">Weight</th>
-                                  <th className="px-4 py-2 font-medium">Reps</th>
-                                  <th className="px-4 py-2 font-medium">Est.1RM</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                {exercise.sets.map((trainingSet) => {
-                                  const oneRepMax = estimatedOneRepMax(trainingSet);
+                      return (
+                        <section key={exercise.id} className="overflow-hidden rounded-md border border-gray-200">
+                          <button
+                            className="flex w-full flex-col gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-left transition hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between"
+                            type="button"
+                            onClick={() => toggleExercise(exercise.id)}
+                            aria-expanded={!isCollapsed}
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-500">
+                                  {isCollapsed ? "+" : "-"}
+                                </span>
+                                <h3 className="text-base font-semibold text-gray-950">{exercise.exerciseName}</h3>
+                              </div>
+                              {exercise.memo ? <p className="mt-1 text-sm text-gray-600">{exercise.memo}</p> : null}
+                            </div>
 
-                                  return (
-                                    <tr key={trainingSet.id}>
-                                      <td className="px-4 py-3 font-medium text-gray-950">
-                                        {trainingSet.setNumber}
-                                      </td>
-                                      <td className="px-4 py-3 text-gray-700">
-                                        {trainingSet.weightKg === null
-                                          ? "-"
-                                          : `${formatNumber(trainingSet.weightKg)} kg`}
-                                      </td>
-                                      <td className="px-4 py-3 text-gray-700">{trainingSet.reps}</td>
-                                      <td className="px-4 py-3 text-gray-700">
-                                        {oneRepMax === null ? "-" : `${formatNumber(oneRepMax)} kg`}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <p className="px-4 py-3 text-sm text-gray-600">セットがありません。</p>
-                        )}
-                      </section>
-                    ))}
+                            <div className="grid grid-cols-3 gap-2 text-sm sm:min-w-80">
+                              <div>
+                                <p className="text-xs font-medium text-gray-500">Sets</p>
+                                <p className="mt-0.5 font-semibold text-gray-950">{exerciseSummary.totalSets}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-gray-500">Reps</p>
+                                <p className="mt-0.5 font-semibold text-gray-950">{exerciseSummary.totalReps}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-gray-500">Volume</p>
+                                <p className="mt-0.5 font-semibold text-gray-950">
+                                  {formatNumber(exerciseSummary.totalVolume, 0)}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+
+                          {!isCollapsed && exercise.sets.length > 0 ? (
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[520px] text-left text-sm">
+                                <thead className="text-gray-500">
+                                  <tr>
+                                    <th className="px-4 py-2 font-medium">Set</th>
+                                    <th className="px-4 py-2 font-medium">Weight</th>
+                                    <th className="px-4 py-2 font-medium">Reps</th>
+                                    <th className="px-4 py-2 font-medium">Est.1RM</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {exercise.sets.map((trainingSet) => {
+                                    const oneRepMax = estimatedOneRepMax(trainingSet);
+
+                                    return (
+                                      <tr key={trainingSet.id}>
+                                        <td className="px-4 py-3 font-medium text-gray-950">
+                                          {trainingSet.setNumber}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                          {trainingSet.weightKg === null
+                                            ? "-"
+                                            : `${formatNumber(trainingSet.weightKg)} kg`}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700">{trainingSet.reps}</td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                          {oneRepMax === null ? "-" : `${formatNumber(oneRepMax)} kg`}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : null}
+
+                          {!isCollapsed && exercise.sets.length === 0 ? (
+                            <p className="px-4 py-3 text-sm text-gray-600">セットがありません。</p>
+                          ) : null}
+                        </section>
+                      );
+                    })}
                   </div>
                 </article>
               );

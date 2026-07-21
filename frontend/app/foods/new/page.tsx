@@ -9,6 +9,8 @@ export default function NewFoodPage() {
   const [name, setName] = useState("");
   const [caloriesPer100g, setCaloriesPer100g] = useState("");
   const [proteinPer100g, setProteinPer100g] = useState("");
+  const [fatPer100g, setFatPer100g] = useState("");
+  const [carbPer100g, setCarbPer100g] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,6 +26,8 @@ export default function NewFoodPage() {
 
     const caloriesValue = Number(caloriesPer100g);
     const proteinValue = Number(proteinPer100g);
+    const fatValue = Number(fatPer100g || 0);
+    const carbValue = Number(carbPer100g || 0);
 
     if (!name.trim()) {
       setError("nameを入力してください。");
@@ -40,13 +44,25 @@ export default function NewFoodPage() {
       return;
     }
 
+    if (fatValue < 0 || Number.isNaN(fatValue)) {
+      setError("fatPer100gは0以上の数値で入力してください。");
+      return;
+    }
+
+    if (carbValue < 0 || Number.isNaN(carbValue)) {
+      setError("carbPer100gは0以上の数値で入力してください。");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await createFood(token, {
         name: name.trim(),
         caloriesPer100g: caloriesValue,
-        proteinPer100g: proteinValue
+        proteinPer100g: proteinValue,
+        fatPer100g: fatValue,
+        carbPer100g: carbValue
       });
       router.push("/dashboard");
     } catch (err) {
@@ -103,6 +119,30 @@ export default function NewFoodPage() {
                 value={proteinPer100g}
                 onChange={(event) => setProteinPer100g(event.target.value)}
                 required
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">fatPer100g</span>
+              <input
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-950 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                type="number"
+                min="0"
+                step="0.1"
+                value={fatPer100g}
+                onChange={(event) => setFatPer100g(event.target.value)}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">carbPer100g</span>
+              <input
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-950 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                type="number"
+                min="0"
+                step="0.1"
+                value={carbPer100g}
+                onChange={(event) => setCarbPer100g(event.target.value)}
               />
             </label>
           </div>

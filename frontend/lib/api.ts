@@ -10,6 +10,8 @@ export type LoginResponse = {
 export type DashboardResponse = {
   totalCalories: number;
   totalProtein: number;
+  totalFat?: number;
+  totalCarbs?: number;
   todayWeight: number | null;
   totalTrainingCalories: number;
 };
@@ -82,6 +84,8 @@ export type CreateFoodRequest = {
   name: string;
   caloriesPer100g: number;
   proteinPer100g: number;
+  fatPer100g?: number;
+  carbPer100g?: number;
 };
 
 export type Food = {
@@ -89,6 +93,8 @@ export type Food = {
   name: string;
   caloriesPer100g: number;
   proteinPer100g: number;
+  fatPer100g: number;
+  carbPer100g: number;
 };
 
 export type CreateMealLogRequest = {
@@ -100,6 +106,11 @@ export type MealLogResponse = {
   id: number;
   mealName: string;
   date: string;
+  memo?: string | null;
+  totalCalories?: number;
+  totalProtein?: number;
+  totalFat?: number;
+  totalCarbs?: number;
 };
 
 export type MealItemResponse = {
@@ -107,8 +118,12 @@ export type MealItemResponse = {
   mealLogId: number;
   foodId: number;
   quantityG: number;
+  amountG?: number;
+  quantityGrams?: number;
   calories: number;
   protein: number;
+  fat?: number;
+  carbs?: number;
 };
 
 export type CreateMealItemRequest = {
@@ -199,8 +214,8 @@ export async function createFood(token: string, request: CreateFoodRequest): Pro
     },
     body: JSON.stringify({
       ...request,
-      fatPer100g: 0,
-      carbPer100g: 0
+      fatPer100g: request.fatPer100g ?? 0,
+      carbPer100g: request.carbPer100g ?? 0
     })
   });
 

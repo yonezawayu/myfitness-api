@@ -17,6 +17,19 @@ type MealWithItems = MealLogResponse & {
   items: MealItemResponse[];
 };
 
+type NutritionSummary = {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+};
+
+function formatNumber(value: number, maximumFractionDigits = 1) {
+  return new Intl.NumberFormat("ja-JP", {
+    maximumFractionDigits
+  }).format(value);
+}
+
 export default function MealsPage() {
   const router = useRouter();
   const [meals, setMeals] = useState<MealWithItems[]>([]);
@@ -62,6 +75,46 @@ export default function MealsPage() {
 
   function foodName(foodId: number) {
     return foods.find((food) => food.id === foodId)?.name ?? `Food #${foodId}`;
+  }
+
+  function itemQuantity(item: MealItemResponse) {
+    return item.quantityG ?? item.quantityGrams ?? item.amountG ?? 0;
+  }
+
+  function itemNutrition(item: MealItemResponse): NutritionSummary {
+    const food = foods.find((currentFood) => currentFood.id === item.foodId);
+    const quantity = itemQuantity(item);
+    const ratio = quantity / 100;
+
+    return {
+      calories: item.calories ?? (food ? food.caloriesPer100g * ratio : 0),
+      protein: item.protein ?? (food ? food.proteinPer100g * ratio : 0),
+      fat: item.fat ?? (food ? food.fatPer100g * ratio : 0),
+      carbs: item.carbs ?? (food ? food.carbPer100g * ratio : 0)
+    };
+  }
+
+  function mealSummary(meal: MealWithItems): NutritionSummary {
+    const itemTotals = meal.items.reduce(
+      (totals, item) => {
+        const nutrition = itemNutrition(item);
+
+        return {
+          calories: totals.calories + nutrition.calories,
+          protein: totals.protein + nutrition.protein,
+          fat: totals.fat + nutrition.fat,
+          carbs: totals.carbs + nutrition.carbs
+        };
+      },
+      { calories: 0, protein: 0, fat: 0, carbs: 0 }
+    );
+
+    return {
+      calories: meal.totalCalories ?? itemTotals.calories,
+      protein: meal.totalProtein ?? itemTotals.protein,
+      fat: meal.totalFat ?? itemTotals.fat,
+      carbs: meal.totalCarbs ?? itemTotals.carbs
+    };
   }
 
   async function handleDelete(mealId: number) {
@@ -129,51 +182,82 @@ export default function MealsPage() {
 
         {meals.length > 0 ? (
           <section className="space-y-4">
-            {meals.map((meal) => (
-              <article key={meal.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-950">{meal.mealName}</h2>
-                    <p className="mt-1 text-sm text-gray-500">{meal.date}</p>
-                  </div>
-                  <button
-                    className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-                    type="button"
-                    onClick={() => handleDelete(meal.id)}
-                    disabled={deletingMealId === meal.id}
-                  >
-                    {deletingMealId === meal.id ? "削除中..." : "削除"}
-                  </button>
-                </div>
+            {meals.map((meal) => {
+              const summary = mealSummary(meal);
 
-                {meal.items.length > 0 ? (
-                  <div className="mt-4 overflow-hidden rounded-md border border-gray-200">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50 text-gray-600">
-                        <tr>
-                          <th className="px-3 py-2 font-medium">food</th>
-                          <th className="px-3 py-2 font-medium">amountG</th>
-                          <th className="px-3 py-2 font-medium">calories</th>
-                          <th className="px-3 py-2 font-medium">protein</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {meal.items.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-3 py-2 text-gray-950">{foodName(item.foodId)}</td>
-                            <td className="px-3 py-2 text-gray-700">{item.quantityG}</td>
-                            <td className="px-3 py-2 text-gray-700">{item.calories}</td>
-                            <td className="px-3 py-2 text-gray-700">{item.protein}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              return (
+                <article key={meal.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-950">{meal.mealName}</h2>
+                      <p className="mt-1 text-sm text-gray-500">{meal.date}</p>
+                    </div>
+                    <button
+                      className="rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+                      type="button"
+                      onClick={() => handleDelete(meal.id)}
+                      disabled={deletingMealId === meal.id}
+                    >
+                      {deletingMealId === meal.id ? "削除中..." : "削除"}
+                    </button>
                   </div>
-                ) : (
-                  <p className="mt-4 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600">食品明細がありません。</p>
-                )}
-              </article>
-            ))}
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-md bg-gray-50 px-3 py-2">
+                      <dt className="text-xs font-medium text-gray-500">totalCalories</dt>
+                      <dd className="mt-1 text-xl font-semibold text-gray-950">{formatNumber(summary.calories)}</dd>
+                    </div>
+                    <div className="rounded-md bg-gray-50 px-3 py-2">
+                      <dt className="text-xs font-medium text-gray-500">totalProtein</dt>
+                      <dd className="mt-1 text-xl font-semibold text-gray-950">{formatNumber(summary.protein)}g</dd>
+                    </div>
+                    <div className="rounded-md bg-gray-50 px-3 py-2">
+                      <dt className="text-xs font-medium text-gray-500">totalFat</dt>
+                      <dd className="mt-1 text-xl font-semibold text-gray-950">{formatNumber(summary.fat)}g</dd>
+                    </div>
+                    <div className="rounded-md bg-gray-50 px-3 py-2">
+                      <dt className="text-xs font-medium text-gray-500">totalCarbs</dt>
+                      <dd className="mt-1 text-xl font-semibold text-gray-950">{formatNumber(summary.carbs)}g</dd>
+                    </div>
+                  </dl>
+
+                  {meal.items.length > 0 ? (
+                    <div className="mt-4 overflow-x-auto rounded-md border border-gray-200">
+                      <table className="w-full min-w-[720px] text-left text-sm">
+                        <thead className="bg-gray-50 text-gray-600">
+                          <tr>
+                            <th className="px-3 py-2 font-medium">food</th>
+                            <th className="px-3 py-2 font-medium">quantityGrams</th>
+                            <th className="px-3 py-2 font-medium">calories</th>
+                            <th className="px-3 py-2 font-medium">protein</th>
+                            <th className="px-3 py-2 font-medium">fat</th>
+                            <th className="px-3 py-2 font-medium">carbs</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {meal.items.map((item) => {
+                            const nutrition = itemNutrition(item);
+
+                            return (
+                              <tr key={item.id}>
+                                <td className="px-3 py-2 text-gray-950">{foodName(item.foodId)}</td>
+                                <td className="px-3 py-2 text-gray-700">{formatNumber(itemQuantity(item))}g</td>
+                                <td className="px-3 py-2 text-gray-700">{formatNumber(nutrition.calories)}</td>
+                                <td className="px-3 py-2 text-gray-700">{formatNumber(nutrition.protein)}g</td>
+                                <td className="px-3 py-2 text-gray-700">{formatNumber(nutrition.fat)}g</td>
+                                <td className="px-3 py-2 text-gray-700">{formatNumber(nutrition.carbs)}g</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-600">食品明細がありません。</p>
+                  )}
+                </article>
+              );
+            })}
           </section>
         ) : null}
       </div>

@@ -117,11 +117,6 @@ export default function TrainingPage() {
                     {deletingTrainingId === trainingLog.id ? "削除中..." : "削除"}
                   </button>
                 </div>
-
-                <div className="mt-5">
-                  <p className="text-sm font-medium text-gray-500">caloriesBurned</p>
-                  <p className="mt-1 text-3xl font-semibold text-gray-950">{trainingLog.caloriesBurned}</p>
-                </div>
               </article>
             ))}
           </section>

@@ -14,7 +14,7 @@ import {
 } from "@/lib/api";
 
 const cards: Array<{
-  key: "totalCalories" | "totalProtein" | "totalFat" | "totalCarbs" | "todayWeight" | "totalTrainingCalories";
+  key: "totalCalories" | "totalProtein" | "totalFat" | "totalCarbs" | "todayWeight";
   label: string;
   unit: string;
 }> = [
@@ -22,8 +22,7 @@ const cards: Array<{
   { key: "totalProtein", label: "Protein", unit: "g" },
   { key: "totalFat", label: "Fat", unit: "g" },
   { key: "totalCarbs", label: "Carbs", unit: "g" },
-  { key: "todayWeight", label: "今日の体重", unit: "kg" },
-  { key: "totalTrainingCalories", label: "消費カロリー", unit: "kcal" }
+  { key: "todayWeight", label: "今日の体重", unit: "kg" }
 ];
 
 type NutritionSummary = {

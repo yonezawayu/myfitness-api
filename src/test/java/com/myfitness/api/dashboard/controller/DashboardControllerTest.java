@@ -41,8 +41,7 @@ class DashboardControllerTest {
                                 120,
                                 3L,
                                 70.0,
-                                -0.5,
-                                500);
+                                -0.5);
 
                 when(dashboardService.getTodayDashboard()).thenReturn(response);
 
@@ -53,8 +52,7 @@ class DashboardControllerTest {
                                 .andExpect(jsonPath("$.totalProtein").value(120))
                                 .andExpect(jsonPath("$.mealCount").value(3))
                                 .andExpect(jsonPath("$.todayWeight").value(70.0))
-                                .andExpect(jsonPath("$.weightDiffFromYesterday").value(-0.5))
-                                .andExpect(jsonPath("$.totalTrainingCalories").value(500));
+                                .andExpect(jsonPath("$.weightDiffFromYesterday").value(-0.5));
         }
 
         @Test

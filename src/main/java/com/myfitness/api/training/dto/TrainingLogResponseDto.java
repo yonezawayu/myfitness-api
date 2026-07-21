@@ -6,7 +6,6 @@ public class TrainingLogResponseDto {
 
     private Long id;
     private String trainingName;
-    private Integer caloriesBurned;
     private LocalDate date;
 
     public TrainingLogResponseDto() {
@@ -15,12 +14,10 @@ public class TrainingLogResponseDto {
     public TrainingLogResponseDto(
             Long id,
             String trainingName,
-            Integer caloriesBurned,
             LocalDate date) {
 
         this.id = id;
         this.trainingName = trainingName;
-        this.caloriesBurned = caloriesBurned;
         this.date = date;
     }
 
@@ -30,10 +27,6 @@ public class TrainingLogResponseDto {
 
     public String getTrainingName() {
         return trainingName;
-    }
-
-    public Integer getCaloriesBurned() {
-        return caloriesBurned;
     }
 
     public LocalDate getDate() {

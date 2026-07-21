@@ -11,7 +11,7 @@ import com.myfitness.api.training.service.TrainingLogService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-@Tag(name = "TrainingLog", description = "トレーニングログ（消費カロリー）")
+@Tag(name = "TrainingLog", description = "トレーニングログ")
 @RestController
 @RequestMapping("/training-logs")
 public class TrainingLogController {

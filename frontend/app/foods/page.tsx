@@ -74,7 +74,7 @@ export default function FoodsPage() {
             {foods.map((food) => (
               <article key={food.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-semibold text-gray-950">{food.name}</h2>
-                <dl className="mt-4 grid grid-cols-2 gap-4">
+                <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                   <div>
                     <dt className="text-sm font-medium text-gray-500">caloriesPer100g</dt>
                     <dd className="mt-1 text-2xl font-semibold text-gray-950">{food.caloriesPer100g}</dd>
@@ -82,6 +82,14 @@ export default function FoodsPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">proteinPer100g</dt>
                     <dd className="mt-1 text-2xl font-semibold text-gray-950">{food.proteinPer100g}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">fatPer100g</dt>
+                    <dd className="mt-1 text-2xl font-semibold text-gray-950">{food.fatPer100g}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">carbPer100g</dt>
+                    <dd className="mt-1 text-2xl font-semibold text-gray-950">{food.carbPer100g}</dd>
                   </div>
                 </dl>
               </article>

@@ -2,22 +2,66 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardResponse, fetchTodayDashboard, TOKEN_STORAGE_KEY } from "@/lib/api";
+import {
+  DashboardResponse,
+  fetchFoods,
+  fetchMealItems,
+  fetchMealLogs,
+  fetchTodayDashboard,
+  Food,
+  MealItemResponse,
+  TOKEN_STORAGE_KEY
+} from "@/lib/api";
 
 const cards: Array<{
-  key: keyof DashboardResponse;
+  key: "totalCalories" | "totalProtein" | "totalFat" | "totalCarbs" | "todayWeight" | "totalTrainingCalories";
   label: string;
   unit: string;
 }> = [
   { key: "totalCalories", label: "摂取カロリー", unit: "kcal" },
-  { key: "totalProtein", label: "タンパク質", unit: "g" },
+  { key: "totalProtein", label: "Protein", unit: "g" },
+  { key: "totalFat", label: "Fat", unit: "g" },
+  { key: "totalCarbs", label: "Carbs", unit: "g" },
   { key: "todayWeight", label: "今日の体重", unit: "kg" },
   { key: "totalTrainingCalories", label: "消費カロリー", unit: "kcal" }
 ];
 
+type NutritionSummary = {
+  totalCalories: number;
+  totalProtein: number;
+  totalFat: number;
+  totalCarbs: number;
+};
+
+function todayString() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function itemQuantity(item: MealItemResponse) {
+  return item.quantityG ?? item.quantityGrams ?? item.amountG ?? 0;
+}
+
+function itemNutrition(item: MealItemResponse, foods: Food[]) {
+  const food = foods.find((currentFood) => currentFood.id === item.foodId);
+  const ratio = itemQuantity(item) / 100;
+
+  return {
+    calories: item.calories ?? (food ? food.caloriesPer100g * ratio : 0),
+    protein: item.protein ?? (food ? food.proteinPer100g * ratio : 0),
+    fat: item.fat ?? (food ? food.fatPer100g * ratio : 0),
+    carbs: item.carbs ?? (food ? food.carbPer100g * ratio : 0)
+  };
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,10 +73,44 @@ export default function DashboardPage() {
       return;
     }
 
-    fetchTodayDashboard(token)
-      .then((data) => {
-        setDashboard(data);
-      })
+    const authToken = token;
+
+    async function loadDashboard() {
+      const [dashboardData, mealLogs, foods] = await Promise.all([
+        fetchTodayDashboard(authToken),
+        fetchMealLogs(authToken),
+        fetchFoods(authToken)
+      ]);
+      const today = todayString();
+      const todayMeals = mealLogs.filter((meal) => meal.date === today);
+      const mealItemsByMeal = await Promise.all(
+        todayMeals.map(async (meal) => fetchMealItems(authToken, meal.id))
+      );
+      const items = mealItemsByMeal.flat();
+      const itemTotals = items.reduce(
+        (totals, item) => {
+          const nutrition = itemNutrition(item, foods);
+
+          return {
+            totalCalories: totals.totalCalories + nutrition.calories,
+            totalProtein: totals.totalProtein + nutrition.protein,
+            totalFat: totals.totalFat + nutrition.fat,
+            totalCarbs: totals.totalCarbs + nutrition.carbs
+          };
+        },
+        { totalCalories: 0, totalProtein: 0, totalFat: 0, totalCarbs: 0 }
+      );
+
+      setDashboard(dashboardData);
+      setNutritionSummary({
+        totalCalories: dashboardData.totalCalories ?? itemTotals.totalCalories,
+        totalProtein: dashboardData.totalProtein ?? itemTotals.totalProtein,
+        totalFat: dashboardData.totalFat ?? itemTotals.totalFat,
+        totalCarbs: dashboardData.totalCarbs ?? itemTotals.totalCarbs
+      });
+    }
+
+    loadDashboard()
       .catch((err) => {
         setError(err instanceof Error ? err.message : "ダッシュボードの取得に失敗しました。");
         if (err instanceof Error && err.message.includes("ログイン")) {
@@ -47,6 +125,14 @@ export default function DashboardPage() {
   function handleLogout() {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     router.push("/");
+  }
+
+  function cardValue(key: (typeof cards)[number]["key"]) {
+    if (key === "totalCalories" || key === "totalProtein" || key === "totalFat" || key === "totalCarbs") {
+      return nutritionSummary?.[key] ?? dashboard?.[key] ?? null;
+    }
+
+    return dashboard?.[key] ?? null;
   }
 
   return (
@@ -138,15 +224,17 @@ export default function DashboardPage() {
         ) : null}
 
         {dashboard ? (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {cards.map((card) => {
-              const value = dashboard[card.key];
+              const value = cardValue(card.key);
 
               return (
                 <article key={card.key} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
                   <p className="text-sm font-medium text-gray-500">{card.label}</p>
                   <p className="mt-4 flex items-baseline gap-2">
-                    <span className="text-3xl font-semibold text-gray-950">{value ?? "-"}</span>
+                    <span className="text-3xl font-semibold text-gray-950">
+                      {typeof value === "number" ? new Intl.NumberFormat("ja-JP", { maximumFractionDigits: 1 }).format(value) : "-"}
+                    </span>
                     <span className="text-sm text-gray-500">{card.unit}</span>
                   </p>
                 </article>

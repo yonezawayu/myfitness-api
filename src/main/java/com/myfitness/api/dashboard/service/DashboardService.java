@@ -10,7 +10,6 @@ import com.myfitness.api.meal.repository.MealItemRepository;
 import com.myfitness.api.meal.repository.MealLogRepository;
 import com.myfitness.api.record.entity.Record;
 import com.myfitness.api.record.repository.RecordRepository;
-import com.myfitness.api.training.repository.TrainingLogRepository;
 
 @Service
 public class DashboardService {
@@ -18,18 +17,15 @@ public class DashboardService {
         private final MealLogRepository mealLogRepository;
         private final MealItemRepository mealItemRepository;
         private final RecordRepository recordRepository;
-        private final TrainingLogRepository trainingLogRepository;
 
         public DashboardService(
                         MealLogRepository mealLogRepository,
                         MealItemRepository mealItemRepository,
-                        RecordRepository recordRepository,
-                        TrainingLogRepository trainingLogRepository) {
+                        RecordRepository recordRepository) {
 
                 this.mealLogRepository = mealLogRepository;
                 this.mealItemRepository = mealItemRepository;
                 this.recordRepository = recordRepository;
-                this.trainingLogRepository = trainingLogRepository;
         }
 
         public DashboardResponseDto getTodayDashboard() {
@@ -51,8 +47,6 @@ public class DashboardService {
                 // 食事回数はMealLogのままでOK
                 Long mealCount = defaultZero(mealLogRepository.countByDate(date));
 
-                Integer trainingCalories = defaultZero(trainingLogRepository.sumCaloriesByDate(date));
-
                 Double todayWeight = recordRepository.findTopByDateOrderByIdDesc(date)
                                 .map(Record::getWeight)
                                 .orElse(null);
@@ -71,8 +65,7 @@ public class DashboardService {
                                 totalProtein,
                                 mealCount,
                                 todayWeight,
-                                diff,
-                                trainingCalories);
+                                diff);
         }
 
         // ===== null対策 =====

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Dashboard", description = "日次集計（Meal / Training / Record を横断）")
+@Tag(name = "Dashboard", description = "日次集計（Meal / Record を横断）")
 @RestController
 @RequestMapping("/dashboard")
 public class DashboardController {
@@ -38,7 +38,6 @@ public class DashboardController {
                 "totalCalories": 1500,
                 "totalProtein": 120,
                 "mealCount": 3,
-                "totalTrainingCalories": 450,
                 "todayWeight": 70.5,
                 "weightDiffFromYesterday": -0.3
               }
@@ -48,7 +47,6 @@ public class DashboardController {
                 "totalCalories": 0,
                 "totalProtein": 0,
                 "mealCount": 0,
-                "totalTrainingCalories": 0,
                 "todayWeight": null,
                 "weightDiffFromYesterday": null
               }

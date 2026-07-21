@@ -16,17 +16,14 @@ public class TrainingLog {
 
     private String trainingName;
 
-    private Integer caloriesBurned;
-
     private LocalDate date;
 
     public TrainingLog() {
     }
 
-    public TrainingLog(Long id, String trainingName, Integer caloriesBurned, LocalDate date) {
+    public TrainingLog(Long id, String trainingName, LocalDate date) {
         this.id = id;
         this.trainingName = trainingName;
-        this.caloriesBurned = caloriesBurned;
         this.date = date;
     }
 
@@ -40,14 +37,6 @@ public class TrainingLog {
 
     public void setTrainingName(String trainingName) {
         this.trainingName = trainingName;
-    }
-
-    public Integer getCaloriesBurned() {
-        return caloriesBurned;
-    }
-
-    public void setCaloriesBurned(Integer caloriesBurned) {
-        this.caloriesBurned = caloriesBurned;
     }
 
     public LocalDate getDate() {

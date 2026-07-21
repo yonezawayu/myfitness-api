@@ -18,7 +18,6 @@ import com.myfitness.api.meal.repository.MealItemRepository;
 import com.myfitness.api.meal.repository.MealLogRepository;
 import com.myfitness.api.record.entity.Record;
 import com.myfitness.api.record.repository.RecordRepository;
-import com.myfitness.api.training.repository.TrainingLogRepository;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
@@ -31,9 +30,6 @@ class DashboardServiceTest {
 
         @Mock
         private RecordRepository recordRepository;
-
-        @Mock
-        private TrainingLogRepository trainingLogRepository;
 
         @InjectMocks
         private DashboardService dashboardService;
@@ -55,8 +51,6 @@ class DashboardServiceTest {
 
                 when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.of(todayRecord));
                 when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.of(yesterdayRecord));
-                when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(500);
-
                 DashboardResponseDto result = dashboardService.getTodayDashboard();
 
                 assertThat(result.getDate()).isEqualTo(today);
@@ -65,7 +59,6 @@ class DashboardServiceTest {
                 assertThat(result.getMealCount()).isEqualTo(3);
                 assertThat(result.getTodayWeight()).isEqualTo(70.0);
                 assertThat(result.getWeightDiffFromYesterday()).isEqualTo(-0.5);
-                assertThat(result.getTotalTrainingCalories()).isEqualTo(500);
         }
 
         @Test
@@ -79,8 +72,6 @@ class DashboardServiceTest {
 
                 when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.empty());
                 when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.empty());
-                when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(null);
-
                 DashboardResponseDto result = dashboardService.getTodayDashboard();
 
                 assertThat(result.getDate()).isEqualTo(today);
@@ -89,7 +80,6 @@ class DashboardServiceTest {
                 assertThat(result.getMealCount()).isZero();
                 assertThat(result.getTodayWeight()).isNull();
                 assertThat(result.getWeightDiffFromYesterday()).isNull();
-                assertThat(result.getTotalTrainingCalories()).isZero();
         }
 
         @Test
@@ -109,8 +99,6 @@ class DashboardServiceTest {
 
                 when(recordRepository.findTopByDateOrderByIdDesc(today)).thenReturn(Optional.of(todayRecord));
                 when(recordRepository.findTopByDateOrderByIdDesc(yesterday)).thenReturn(Optional.of(yesterdayRecord));
-                when(trainingLogRepository.sumCaloriesByDate(today)).thenReturn(400);
-
                 DashboardResponseDto result = dashboardService.getTodayDashboard();
 
                 assertThat(result.getTodayWeight()).isEqualTo(70.0);

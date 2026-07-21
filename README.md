@@ -228,13 +228,12 @@ GET /dashboard/today
   "totalProtein": 120,
   "mealCount": 3,
   "todayWeight": 70.0,
-  "weightDiffFromYesterday": -0.5,
-  "totalTrainingCalories": 500
+  "weightDiffFromYesterday": -0.5
 }
 ```
 
-Dashboard では、食事・トレーニング・体重を横断して、
-「摂取 / 消費 / 体重」の関係を1画面で確認できるようにしています。
+Dashboard では、食事・体重を横断して、
+「摂取 / 体重」の関係を1画面で確認できるようにしています。
 
 ## フロントエンド画面
 
@@ -251,7 +250,6 @@ Dashboard では、食事・トレーニング・体重を横断して、
 - `totalCalories`
 - `totalProtein`
 - `todayWeight`
-- `totalTrainingCalories`
 
 ## 工夫ポイント
 

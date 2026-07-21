@@ -13,7 +13,6 @@ export type DashboardResponse = {
   totalFat?: number;
   totalCarbs?: number;
   todayWeight: number | null;
-  totalTrainingCalories: number;
 };
 
 export type CreateRecordRequest = {
@@ -30,14 +29,12 @@ export type RecordResponse = {
 
 export type CreateTrainingLogRequest = {
   trainingName: string;
-  caloriesBurned: number;
   date: string;
 };
 
 export type TrainingLogResponse = {
   id: number;
   trainingName: string;
-  caloriesBurned: number;
   date: string;
 };
 

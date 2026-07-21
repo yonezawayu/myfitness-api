@@ -11,7 +11,6 @@ function todayString() {
 export default function NewTrainingPage() {
   const router = useRouter();
   const [trainingName, setTrainingName] = useState("");
-  const [caloriesBurned, setCaloriesBurned] = useState("");
   const [date, setDate] = useState(todayString());
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,15 +25,8 @@ export default function NewTrainingPage() {
       return;
     }
 
-    const caloriesBurnedValue = Number(caloriesBurned);
-
     if (!trainingName.trim()) {
       setError("trainingNameを入力してください。");
-      return;
-    }
-
-    if (caloriesBurnedValue < 0 || Number.isNaN(caloriesBurnedValue)) {
-      setError("caloriesBurnedは0以上の数値で入力してください。");
       return;
     }
 
@@ -48,7 +40,6 @@ export default function NewTrainingPage() {
     try {
       await createTrainingLog(token, {
         trainingName: trainingName.trim(),
-        caloriesBurned: caloriesBurnedValue,
         date
       });
       router.push("/dashboard");
@@ -79,18 +70,6 @@ export default function NewTrainingPage() {
                 type="text"
                 value={trainingName}
                 onChange={(event) => setTrainingName(event.target.value)}
-                required
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">caloriesBurned</span>
-              <input
-                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-950 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-                type="number"
-                min="0"
-                value={caloriesBurned}
-                onChange={(event) => setCaloriesBurned(event.target.value)}
                 required
               />
             </label>

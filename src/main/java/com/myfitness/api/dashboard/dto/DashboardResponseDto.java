@@ -15,23 +15,19 @@ public class DashboardResponseDto {
     private Double todayWeight;
     @Schema(description = "前日との差分（比較不可の場合null）", example = "-0.3", nullable = true)
     private Double weightDiffFromYesterday;
-    private int totalTrainingCalories;
-
     public DashboardResponseDto(
             LocalDate date,
             int totalCalories,
             int totalProtein,
             long mealCount,
             Double todayWeight,
-            Double weightDiffFromYesterday,
-            int totalTrainingCalories) {
+            Double weightDiffFromYesterday) {
         this.date = date;
         this.totalCalories = totalCalories;
         this.totalProtein = totalProtein;
         this.mealCount = mealCount;
         this.todayWeight = todayWeight;
         this.weightDiffFromYesterday = weightDiffFromYesterday;
-        this.totalTrainingCalories = totalTrainingCalories;
     }
 
     // Getter
@@ -59,7 +55,4 @@ public class DashboardResponseDto {
         return weightDiffFromYesterday;
     }
 
-    public Integer getTotalTrainingCalories() {
-        return totalTrainingCalories;
-    }
 }

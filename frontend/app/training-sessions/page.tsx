@@ -111,7 +111,7 @@ export default function TrainingSessionsPage() {
             <button
               className="rounded-md bg-gray-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
               type="button"
-              onClick={() => router.push("/training-sessions/new")}
+              onClick={() => router.push("/training-sessions/select-exercises")}
             >
               新規作成
             </button>

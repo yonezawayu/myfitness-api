@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteTrainingSession,
   fetchTrainingSessions,
   TOKEN_STORAGE_KEY,
   TrainingExerciseResponse,
@@ -59,6 +60,7 @@ export default function TrainingSessionsPage() {
   const [sessions, setSessions] = useState<TrainingSessionResponse[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null);
   const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -97,6 +99,50 @@ export default function TrainingSessionsPage() {
 
       return nextIds;
     });
+  }
+
+  async function deleteSession(session: TrainingSessionResponse) {
+    if (deletingSessionId !== null) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${session.date}のTraining Sessionを削除しますか？\n関連するExerciseとSetも削除されます。`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+
+    setDeletingSessionId(session.id);
+    setError("");
+
+    try {
+      await deleteTrainingSession(token, session.id);
+      setSessions((currentSessions) =>
+        currentSessions.filter((currentSession) => currentSession.id !== session.id)
+      );
+      const deletedExerciseIds = new Set(session.exercises.map((exercise) => exercise.id));
+      setCollapsedExerciseIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        deletedExerciseIds.forEach((exerciseId) => nextIds.delete(exerciseId));
+        return nextIds;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Training Sessionの削除に失敗しました。";
+      setError(message);
+      if (message.includes("ログイン")) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        router.replace("/");
+      }
+    } finally {
+      setDeletingSessionId(null);
+    }
   }
 
   return (
@@ -170,6 +216,24 @@ export default function TrainingSessionsPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
+                    <button
+                      className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+                      type="button"
+                      onClick={() => router.push(`/training-sessions/${session.id}/edit`)}
+                    >
+                      編集
+                    </button>
+                    <button
+                      className="rounded-md border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
+                      type="button"
+                      onClick={() => deleteSession(session)}
+                      disabled={deletingSessionId !== null}
+                    >
+                      {deletingSessionId === session.id ? "削除中..." : "削除"}
+                    </button>
                   </div>
 
                   <div className="mt-5 space-y-4">

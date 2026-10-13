@@ -72,10 +72,23 @@ export type CreateTrainingExerciseRequest = {
 
 export type CreateTrainingSetRequest = {
   setNumber: number;
-  weightKg: number;
+  weightKg: number | null;
   reps: number;
   memo: string | null;
 };
+
+export type UpdateTrainingSessionRequest = CreateTrainingSessionRequest;
+
+export type UpdateTrainingExerciseRequest = CreateTrainingExerciseRequest;
+
+export type UpdateTrainingSetRequest = CreateTrainingSetRequest;
+
+export class TrainingSessionNotFoundError extends Error {
+  constructor() {
+    super("Training Sessionが見つかりません。");
+    this.name = "TrainingSessionNotFoundError";
+  }
+}
 
 export type CreateFoodRequest = {
   name: string;
@@ -404,6 +417,32 @@ export async function fetchTrainingSessions(token: string): Promise<TrainingSess
   return response.json();
 }
 
+export async function fetchTrainingSession(
+  token: string,
+  sessionId: number
+): Promise<TrainingSessionResponse> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    cache: "no-store"
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (response.status === 404) {
+    throw new TrainingSessionNotFoundError();
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Sessionの取得に失敗しました。");
+  }
+
+  return response.json();
+}
+
 export async function createTrainingSession(
   token: string,
   request: CreateTrainingSessionRequest
@@ -426,6 +465,48 @@ export async function createTrainingSession(
   }
 
   return response.json();
+}
+
+export async function updateTrainingSession(
+  token: string,
+  sessionId: number,
+  request: UpdateTrainingSessionRequest
+): Promise<TrainingSessionResponse> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Sessionの更新に失敗しました。入力内容を確認してください。");
+  }
+
+  return response.json();
+}
+
+export async function deleteTrainingSession(token: string, sessionId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Sessionの削除に失敗しました。");
+  }
 }
 
 export async function createTrainingExercise(
@@ -453,6 +534,49 @@ export async function createTrainingExercise(
   return response.json();
 }
 
+export async function updateTrainingExercise(
+  token: string,
+  sessionId: number,
+  exerciseId: number,
+  request: UpdateTrainingExerciseRequest
+): Promise<TrainingExerciseResponse> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(request)
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Exerciseの更新に失敗しました。入力内容を確認してください。");
+  }
+
+  return response.json();
+}
+
+export async function deleteTrainingExercise(token: string, sessionId: number, exerciseId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Exerciseの削除に失敗しました。");
+  }
+}
+
 export async function createTrainingSet(
   token: string,
   sessionId: number,
@@ -477,6 +601,61 @@ export async function createTrainingSet(
   }
 
   return response.json();
+}
+
+export async function updateTrainingSet(
+  token: string,
+  sessionId: number,
+  exerciseId: number,
+  setId: number,
+  request: UpdateTrainingSetRequest
+): Promise<TrainingSetResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}/sets/${setId}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(request)
+    }
+  );
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Setの更新に失敗しました。入力内容を確認してください。");
+  }
+
+  return response.json();
+}
+
+export async function deleteTrainingSet(
+  token: string,
+  sessionId: number,
+  exerciseId: number,
+  setId: number
+): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}/sets/${setId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error("認証情報が無効です。もう一度ログインしてください。");
+  }
+
+  if (!response.ok) {
+    throw new Error("Training Setの削除に失敗しました。");
+  }
 }
 
 export async function fetchRecords(token: string): Promise<RecordResponse[]> {

@@ -6,8 +6,8 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: myfitness
-      POSTGRES_USER: myfitness_user
-      POSTGRES_PASSWORD: myfitness_pass
+      POSTGRES_USER: ${MYFITNESS_DB_USERNAME:?MYFITNESS_DB_USERNAME is required}
+      POSTGRES_PASSWORD: ${MYFITNESS_DB_PASSWORD:?MYFITNESS_DB_PASSWORD is required}
     volumes:
       - postgres-data:/var/lib/postgresql/data
 

@@ -17,6 +17,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -36,6 +38,11 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/users").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                                                 .anyRequest().authenticated())
+                                .exceptionHandling(exceptions -> exceptions
+                                                .authenticationEntryPoint((request, response, exception) ->
+                                                                response.sendError(
+                                                                                HttpServletResponse.SC_UNAUTHORIZED,
+                                                                                "Unauthorized")))
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();

@@ -9,9 +9,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
+import com.myfitness.api.user.entity.User;
 
 @Entity
 @Table(name = "training_sessions")
@@ -27,15 +32,20 @@ public class TrainingSession {
     @Column(length = 500)
     private String memo;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false, updatable = false)
+    private User user;
+
     @OneToMany(mappedBy = "trainingSession", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TrainingExercise> exercises = new ArrayList<>();
 
     public TrainingSession() {
     }
 
-    public TrainingSession(LocalDate date, String memo) {
+    public TrainingSession(LocalDate date, String memo, User user) {
         this.date = date;
         this.memo = memo;
+        this.user = user;
     }
 
     public Long getId() {
@@ -56,6 +66,10 @@ public class TrainingSession {
 
     public void setMemo(String memo) {
         this.memo = memo;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public List<TrainingExercise> getExercises() {

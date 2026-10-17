@@ -19,6 +19,8 @@ import com.myfitness.api.training.entity.TrainingSet;
 import com.myfitness.api.training.repository.TrainingExerciseRepository;
 import com.myfitness.api.training.repository.TrainingSessionRepository;
 import com.myfitness.api.training.repository.TrainingSetRepository;
+import com.myfitness.api.user.entity.User;
+import com.myfitness.api.user.repository.UserRepository;
 
 @Service
 @Transactional(readOnly = true)
@@ -27,59 +29,76 @@ public class TrainingSessionService {
     private final TrainingSessionRepository trainingSessionRepository;
     private final TrainingExerciseRepository trainingExerciseRepository;
     private final TrainingSetRepository trainingSetRepository;
+    private final UserRepository userRepository;
 
     public TrainingSessionService(
             TrainingSessionRepository trainingSessionRepository,
             TrainingExerciseRepository trainingExerciseRepository,
-            TrainingSetRepository trainingSetRepository) {
+            TrainingSetRepository trainingSetRepository,
+            UserRepository userRepository) {
         this.trainingSessionRepository = trainingSessionRepository;
         this.trainingExerciseRepository = trainingExerciseRepository;
         this.trainingSetRepository = trainingSetRepository;
+        this.userRepository = userRepository;
     }
 
-    public List<TrainingSessionResponse> findAllSessions() {
-        return trainingSessionRepository.findAllByOrderByDateDescIdDesc().stream()
+    public List<TrainingSessionResponse> findAllSessions(String userEmail) {
+        User user = findAuthenticatedUser(userEmail);
+        return trainingSessionRepository.findAllByUserIdOrderByDateDescIdDesc(user.getId()).stream()
                 .map(this::toSessionResponse)
                 .toList();
     }
 
-    public TrainingSessionResponse findSessionById(Long sessionId) {
-        return toSessionResponse(findSession(sessionId));
+    public TrainingSessionResponse findSessionById(String userEmail, Long sessionId) {
+        User user = findAuthenticatedUser(userEmail);
+        return toSessionResponse(findSession(user.getId(), sessionId));
     }
 
     @Transactional
-    public TrainingSessionResponse createSession(TrainingSessionRequest request) {
-        TrainingSession trainingSession = new TrainingSession(request.date(), request.memo());
+    public TrainingSessionResponse createSession(String userEmail, TrainingSessionRequest request) {
+        User user = findAuthenticatedUser(userEmail);
+        TrainingSession trainingSession = new TrainingSession(request.date(), request.memo(), user);
         return toSessionResponse(trainingSessionRepository.save(trainingSession));
     }
 
     @Transactional
-    public TrainingSessionResponse updateSession(Long sessionId, TrainingSessionRequest request) {
-        TrainingSession trainingSession = findSession(sessionId);
+    public TrainingSessionResponse updateSession(
+            String userEmail,
+            Long sessionId,
+            TrainingSessionRequest request) {
+        User user = findAuthenticatedUser(userEmail);
+        TrainingSession trainingSession = findSession(user.getId(), sessionId);
         trainingSession.setDate(request.date());
         trainingSession.setMemo(request.memo());
         return toSessionResponse(trainingSession);
     }
 
     @Transactional
-    public void deleteSession(Long sessionId) {
-        trainingSessionRepository.delete(findSession(sessionId));
+    public void deleteSession(String userEmail, Long sessionId) {
+        User user = findAuthenticatedUser(userEmail);
+        trainingSessionRepository.delete(findSession(user.getId(), sessionId));
     }
 
-    public List<TrainingExerciseResponse> findAllExercises(Long sessionId) {
-        findSession(sessionId);
-        return trainingExerciseRepository.findByTrainingSessionIdOrderByIdAsc(sessionId).stream()
+    public List<TrainingExerciseResponse> findAllExercises(String userEmail, Long sessionId) {
+        User user = findAuthenticatedUser(userEmail);
+        findSession(user.getId(), sessionId);
+        return trainingExerciseRepository.findAllOwnedBySession(sessionId, user.getId()).stream()
                 .map(this::toExerciseResponse)
                 .toList();
     }
 
-    public TrainingExerciseResponse findExerciseById(Long sessionId, Long exerciseId) {
-        return toExerciseResponse(findExercise(sessionId, exerciseId));
+    public TrainingExerciseResponse findExerciseById(String userEmail, Long sessionId, Long exerciseId) {
+        User user = findAuthenticatedUser(userEmail);
+        return toExerciseResponse(findExercise(user.getId(), sessionId, exerciseId));
     }
 
     @Transactional
-    public TrainingExerciseResponse createExercise(Long sessionId, TrainingExerciseRequest request) {
-        TrainingSession trainingSession = findSession(sessionId);
+    public TrainingExerciseResponse createExercise(
+            String userEmail,
+            Long sessionId,
+            TrainingExerciseRequest request) {
+        User user = findAuthenticatedUser(userEmail);
+        TrainingSession trainingSession = findSession(user.getId(), sessionId);
         TrainingExercise trainingExercise = new TrainingExercise(request.exerciseName(), request.memo());
         trainingSession.addExercise(trainingExercise);
         return toExerciseResponse(trainingExerciseRepository.save(trainingExercise));
@@ -87,34 +106,48 @@ public class TrainingSessionService {
 
     @Transactional
     public TrainingExerciseResponse updateExercise(
+            String userEmail,
             Long sessionId,
             Long exerciseId,
             TrainingExerciseRequest request) {
-        TrainingExercise trainingExercise = findExercise(sessionId, exerciseId);
+        User user = findAuthenticatedUser(userEmail);
+        TrainingExercise trainingExercise = findExercise(user.getId(), sessionId, exerciseId);
         trainingExercise.setExerciseName(request.exerciseName());
         trainingExercise.setMemo(request.memo());
         return toExerciseResponse(trainingExercise);
     }
 
     @Transactional
-    public void deleteExercise(Long sessionId, Long exerciseId) {
-        trainingExerciseRepository.delete(findExercise(sessionId, exerciseId));
+    public void deleteExercise(String userEmail, Long sessionId, Long exerciseId) {
+        User user = findAuthenticatedUser(userEmail);
+        trainingExerciseRepository.delete(findExercise(user.getId(), sessionId, exerciseId));
     }
 
-    public List<TrainingSetResponse> findAllSets(Long sessionId, Long exerciseId) {
-        findExercise(sessionId, exerciseId);
-        return trainingSetRepository.findByTrainingExerciseIdOrderBySetNumberAscIdAsc(exerciseId).stream()
+    public List<TrainingSetResponse> findAllSets(String userEmail, Long sessionId, Long exerciseId) {
+        User user = findAuthenticatedUser(userEmail);
+        findExercise(user.getId(), sessionId, exerciseId);
+        return trainingSetRepository.findAllOwnedByExercise(sessionId, exerciseId, user.getId()).stream()
                 .map(this::toSetResponse)
                 .toList();
     }
 
-    public TrainingSetResponse findSetById(Long sessionId, Long exerciseId, Long setId) {
-        return toSetResponse(findSet(sessionId, exerciseId, setId));
+    public TrainingSetResponse findSetById(
+            String userEmail,
+            Long sessionId,
+            Long exerciseId,
+            Long setId) {
+        User user = findAuthenticatedUser(userEmail);
+        return toSetResponse(findSet(user.getId(), sessionId, exerciseId, setId));
     }
 
     @Transactional
-    public TrainingSetResponse createSet(Long sessionId, Long exerciseId, TrainingSetRequest request) {
-        TrainingExercise trainingExercise = findExercise(sessionId, exerciseId);
+    public TrainingSetResponse createSet(
+            String userEmail,
+            Long sessionId,
+            Long exerciseId,
+            TrainingSetRequest request) {
+        User user = findAuthenticatedUser(userEmail);
+        TrainingExercise trainingExercise = findExercise(user.getId(), sessionId, exerciseId);
         TrainingSet trainingSet = new TrainingSet(
                 request.setNumber(),
                 request.weightKg(),
@@ -126,11 +159,13 @@ public class TrainingSessionService {
 
     @Transactional
     public TrainingSetResponse updateSet(
+            String userEmail,
             Long sessionId,
             Long exerciseId,
             Long setId,
             TrainingSetRequest request) {
-        TrainingSet trainingSet = findSet(sessionId, exerciseId, setId);
+        User user = findAuthenticatedUser(userEmail);
+        TrainingSet trainingSet = findSet(user.getId(), sessionId, exerciseId, setId);
         trainingSet.setSetNumber(request.setNumber());
         trainingSet.setWeightKg(request.weightKg());
         trainingSet.setReps(request.reps());
@@ -139,41 +174,36 @@ public class TrainingSessionService {
     }
 
     @Transactional
-    public void deleteSet(Long sessionId, Long exerciseId, Long setId) {
-        trainingSetRepository.delete(findSet(sessionId, exerciseId, setId));
+    public void deleteSet(String userEmail, Long sessionId, Long exerciseId, Long setId) {
+        User user = findAuthenticatedUser(userEmail);
+        trainingSetRepository.delete(findSet(user.getId(), sessionId, exerciseId, setId));
     }
 
-    private TrainingSession findSession(Long sessionId) {
-        return trainingSessionRepository.findById(sessionId)
+    private User findAuthenticatedUser(String userEmail) {
+        return userRepository.findByEmail(userEmail.trim().toLowerCase())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Authenticated user not found"));
+    }
+
+    private TrainingSession findSession(Long userId, Long sessionId) {
+        return trainingSessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> notFound("TrainingSession", sessionId));
     }
 
-    private TrainingExercise findExercise(Long sessionId, Long exerciseId) {
-        TrainingExercise trainingExercise = trainingExerciseRepository.findById(exerciseId)
+    private TrainingExercise findExercise(Long userId, Long sessionId, Long exerciseId) {
+        return trainingExerciseRepository.findOwnedById(sessionId, exerciseId, userId)
                 .orElseThrow(() -> notFound("TrainingExercise", exerciseId));
-
-        if (!trainingExercise.getTrainingSession().getId().equals(sessionId)) {
-            throw notFound("TrainingExercise", exerciseId);
-        }
-
-        return trainingExercise;
     }
 
-    private TrainingSet findSet(Long sessionId, Long exerciseId, Long setId) {
-        findExercise(sessionId, exerciseId);
-        TrainingSet trainingSet = trainingSetRepository.findById(setId)
+    private TrainingSet findSet(Long userId, Long sessionId, Long exerciseId, Long setId) {
+        return trainingSetRepository.findOwnedById(sessionId, exerciseId, setId, userId)
                 .orElseThrow(() -> notFound("TrainingSet", setId));
-
-        if (!trainingSet.getTrainingExercise().getId().equals(exerciseId)) {
-            throw notFound("TrainingSet", setId);
-        }
-
-        return trainingSet;
     }
 
     private TrainingSessionResponse toSessionResponse(TrainingSession trainingSession) {
         List<TrainingExerciseResponse> exercises = trainingExerciseRepository
-                .findByTrainingSessionIdOrderByIdAsc(trainingSession.getId()).stream()
+                .findAllOwnedBySession(trainingSession.getId(), trainingSession.getUser().getId()).stream()
                 .map(this::toExerciseResponse)
                 .toList();
 
@@ -186,7 +216,10 @@ public class TrainingSessionService {
 
     private TrainingExerciseResponse toExerciseResponse(TrainingExercise trainingExercise) {
         List<TrainingSetResponse> sets = trainingSetRepository
-                .findByTrainingExerciseIdOrderBySetNumberAscIdAsc(trainingExercise.getId()).stream()
+                .findAllOwnedByExercise(
+                        trainingExercise.getTrainingSession().getId(),
+                        trainingExercise.getId(),
+                        trainingExercise.getTrainingSession().getUser().getId()).stream()
                 .map(this::toSetResponse)
                 .toList();
 

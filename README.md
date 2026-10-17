@@ -111,6 +111,21 @@ MyFitness API は、食事ログ、食品マスタ、トレーニングログ、
 
 ### Backend
 
+Backend は次の環境変数を必要とします。固定値のフォールバックはありません。
+
+| 環境変数 | 用途 |
+| --- | --- |
+| `MYFITNESS_DB_URL` | PostgreSQL JDBC URL |
+| `MYFITNESS_DB_USERNAME` | PostgreSQLユーザー名 |
+| `MYFITNESS_DB_PASSWORD` | PostgreSQLパスワード |
+| `MYFITNESS_JWT_SECRET` | JWT署名秘密鍵（32文字以上の十分にランダムな値） |
+
+ローカルでは、Git管理外の`.env.backend.local`に値を設定し、所有者だけが読めるようにします。このファイルをコミットしないでください。
+
+```bash
+chmod 600 .env.backend.local
+```
+
 Docker を起動します。
 
 ```bash
@@ -120,14 +135,21 @@ open -a Docker
 PostgreSQL を起動します。
 
 ```bash
-docker compose up -d
+docker compose --env-file .env.backend.local up -d
 ```
 
-Spring Boot アプリケーションを起動します。
+環境変数を現在のシェルへ読み込み、Spring Bootアプリケーションを起動します。
 
 ```bash
-./mvnw spring-boot:run
+(
+  set -a
+  source ./.env.backend.local
+  set +a
+  ./mvnw spring-boot:run
+)
 ```
+
+認証情報をコマンドラインへ直接記述したり、`.env.backend.local`の内容をログへ出力したりしないでください。
 
 バックエンドのテストを実行します。
 

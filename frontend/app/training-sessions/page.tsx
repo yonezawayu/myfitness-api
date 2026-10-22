@@ -101,6 +101,11 @@ export default function TrainingSessionsPage() {
     });
   }
 
+  function handleLogout() {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    router.replace("/");
+  }
+
   async function deleteSession(session: TrainingSessionResponse) {
     if (deletingSessionId !== null) {
       return;
@@ -164,9 +169,9 @@ export default function TrainingSessionsPage() {
             <button
               className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
               type="button"
-              onClick={() => router.push("/dashboard")}
+              onClick={handleLogout}
             >
-              Dashboardへ戻る
+              ログアウト
             </button>
           </div>
         </header>

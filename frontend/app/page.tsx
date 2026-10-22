@@ -14,7 +14,7 @@ export default function LoginPage() {
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (token) {
-      router.replace("/dashboard");
+      router.replace("/training-sessions");
     }
   }, [router]);
 
@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       localStorage.setItem(TOKEN_STORAGE_KEY, result.accessToken);
-      router.push("/dashboard");
+      router.push("/training-sessions");
     } catch (err) {
       setError(err instanceof Error ? err.message : "ログインに失敗しました。");
     } finally {

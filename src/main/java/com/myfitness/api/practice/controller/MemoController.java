@@ -3,6 +3,7 @@ package com.myfitness.api.practice.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,6 +11,7 @@ import com.myfitness.api.practice.dto.MemoRequestDto;
 import com.myfitness.api.practice.dto.MemoResponseDto;
 import com.myfitness.api.practice.service.MemoService;
 
+@ConditionalOnProperty(prefix = "myfitness.features.practice-memos", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/practice/memos")
 public class MemoController {

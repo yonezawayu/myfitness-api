@@ -47,3 +47,20 @@ jwt:
   secret: ${MYFITNESS_JWT_SECRET}
   expiration-minutes: 60
   issuer: "myfitness-api"
+
+myfitness:
+  features:
+    records:
+      enabled: false
+    legacy-training:
+      enabled: false
+    meal-logs:
+      enabled: false
+    meal-items:
+      enabled: false
+    dashboard:
+      enabled: false
+    practice-memos:
+      enabled: false
+    foods:
+      enabled: false

@@ -4,6 +4,7 @@ import java.util.List;
 
 import jakarta.validation.Valid;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import com.myfitness.api.record.dto.RecordRequestDto;
 import com.myfitness.api.record.dto.RecordResponseDto;
 import com.myfitness.api.record.service.RecordService;
 
+@ConditionalOnProperty(prefix = "myfitness.features.records", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/records")
 public class RecordController {

@@ -2,6 +2,7 @@ package com.myfitness.api.meal.controller;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @Tag(name = "MealLog", description = "食事ログ")
+@ConditionalOnProperty(prefix = "myfitness.features.meal-logs", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/meal-logs")
 public class MealLogController {

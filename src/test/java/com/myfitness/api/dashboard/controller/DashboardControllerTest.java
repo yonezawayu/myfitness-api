@@ -19,7 +19,7 @@ import com.myfitness.api.common.exception.GlobalExceptionHandler;
 import com.myfitness.api.dashboard.dto.DashboardResponseDto;
 import com.myfitness.api.dashboard.service.DashboardService;
 
-@WebMvcTest(DashboardController.class)
+@WebMvcTest(controllers = DashboardController.class, properties = "myfitness.features.dashboard.enabled=true")
 @AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 class DashboardControllerTest {

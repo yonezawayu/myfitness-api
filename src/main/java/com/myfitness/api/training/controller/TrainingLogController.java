@@ -2,6 +2,7 @@ package com.myfitness.api.training.controller;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,6 +13,7 @@ import com.myfitness.api.training.service.TrainingLogService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "TrainingLog", description = "トレーニングログ")
+@ConditionalOnProperty(prefix = "myfitness.features.legacy-training", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/training-logs")
 public class TrainingLogController {

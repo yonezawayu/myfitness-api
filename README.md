@@ -107,6 +107,24 @@ MyFitness API は、食事ログ、食品マスタ、トレーニングログ、
 | ------ | ------------------ | ------------------------------------ |
 | GET    | `/dashboard/today` | 今日の食事、体重、トレーニングを集計 |
 
+## MVP公開時の旧API機能フラグ
+
+MVPではTrainingSessionを中心とし、所有権対応が完了していない旧APIはデフォルトで無効です。設定が存在しない場合もControllerは登録されません。
+
+| 設定 | 対象API | デフォルト |
+| --- | --- | --- |
+| `myfitness.features.records.enabled` | `/records/**` | `false` |
+| `myfitness.features.legacy-training.enabled` | `/training-logs/**` | `false` |
+| `myfitness.features.meal-logs.enabled` | `/meal-logs/**` | `false` |
+| `myfitness.features.meal-items.enabled` | `/meal-items/**` | `false` |
+| `myfitness.features.dashboard.enabled` | `/dashboard/**` | `false` |
+| `myfitness.features.practice-memos.enabled` | `/practice/memos/**` | `false` |
+| `myfitness.features.foods.enabled` | `/foods/**` | `false` |
+
+旧APIを再有効化する前に、対象データのユーザー所有権、認可、他ユーザーアクセス拒否、およびHTTP統合テストを実装してください。公開環境で所有権未対応のままフラグを有効にしてはいけません。MealLog、MealItem、Foods、Dashboardは相互依存するため、復旧時は依存関係も合わせて検証します。
+
+Controllerの無効化はEntity、Repository、Service、DBテーブルを削除しないため、既存データは保持されます。
+
 ## 起動手順
 
 ### Backend
@@ -264,7 +282,7 @@ Dashboard では、食事・体重を横断して、
 - email / password を入力
 - `POST /auth/login` を実行
 - 取得した JWT を `localStorage` に保存
-- 成功後 `/dashboard` に遷移
+- 成功後 `/training-sessions` に遷移
 
 ### Dashboard 画面
 

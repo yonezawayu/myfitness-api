@@ -3,11 +3,13 @@ package com.myfitness.api.common.exception;
 import com.myfitness.api.common.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
@@ -57,6 +59,23 @@ public class GlobalExceptionHandler {
                                                 "VALIDATION_ERROR",
                                                 "Validation failed",
                                                 errors,
+                                                request.getRequestURI(),
+                                                OffsetDateTime.now()));
+        }
+
+        // =========================
+        // 404: Controller・静的リソースなし
+        // =========================
+        @ExceptionHandler(NoResourceFoundException.class)
+        public ResponseEntity<ErrorResponse> handleNoResourceFound(
+                        NoResourceFoundException ex,
+                        HttpServletRequest request) {
+
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                                new ErrorResponse(
+                                                "NOT_FOUND",
+                                                "Not Found",
+                                                null,
                                                 request.getRequestURI(),
                                                 OffsetDateTime.now()));
         }

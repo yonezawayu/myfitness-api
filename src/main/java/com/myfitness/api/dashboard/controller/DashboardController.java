@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.time.LocalDate;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Dashboard", description = "日次集計（Meal / Record を横断）")
+@ConditionalOnProperty(prefix = "myfitness.features.dashboard", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/dashboard")
 public class DashboardController {

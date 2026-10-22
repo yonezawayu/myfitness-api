@@ -2,6 +2,7 @@ package com.myfitness.api.food.controller;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import com.myfitness.api.food.service.FoodService;
 
 import lombok.RequiredArgsConstructor;
 
+@ConditionalOnProperty(prefix = "myfitness.features.foods", name = "enabled", havingValue = "true", matchIfMissing = false)
 @RestController
 @RequestMapping("/foods")
 @RequiredArgsConstructor

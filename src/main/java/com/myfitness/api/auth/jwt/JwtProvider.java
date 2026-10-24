@@ -15,6 +15,7 @@ import java.util.Date;
 public class JwtProvider {
 
     private final SecretKey key;
+    private final JwtParser parser;
     private final long expirationMinutes;
     private final String issuer;
 
@@ -25,6 +26,10 @@ public class JwtProvider {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMinutes = expirationMinutes;
         this.issuer = issuer;
+        this.parser = Jwts.parser()
+                .requireIssuer(issuer)
+                .verifyWith(key)
+                .build();
     }
 
     public String generate(Authentication auth) {
@@ -41,10 +46,19 @@ public class JwtProvider {
     }
 
     public Jws<Claims> parse(String token) {
-        return Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token);
+        Jws<Claims> parsed = parser.parseSignedClaims(token);
+        Claims claims = parsed.getPayload();
+
+        if (claims.getExpiration() == null) {
+            throw new JwtException("Missing expiration claim");
+        }
+
+        String subject = claims.getSubject();
+        if (subject == null || subject.isBlank()) {
+            throw new JwtException("Missing subject claim");
+        }
+
+        return parsed;
     }
 
     public long expiresInSeconds() {

@@ -7,4 +7,9 @@ import jakarta.validation.constraints.Size;
 public record UserCreateRequest(
         @NotBlank @Email String email,
         @NotBlank @Size(min = 8, max = 72) String password) {
+
+    @Override
+    public String toString() {
+        return "UserCreateRequest[email=[REDACTED], password=[REDACTED]]";
+    }
 }

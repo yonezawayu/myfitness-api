@@ -129,20 +129,72 @@ Controllerの無効化はEntity、Repository、Service、DBテーブルを削除
 
 ### Backend
 
-Backend は次の環境変数を必要とします。固定値のフォールバックはありません。
+PostgreSQLの初期化管理者、Spring Bootのアプリ実行ロール、手動Flywayのマイグレーションロールは別の資格情報として管理します。固定値のフォールバックはありません。
 
 | 環境変数 | 用途 |
 | --- | --- |
+| `POSTGRES_ADMIN_USER` | 空のデータディレクトリを初期化するPostgreSQL管理者ロール |
+| `POSTGRES_ADMIN_PASSWORD` | PostgreSQL初期化管理者のパスワード |
 | `MYFITNESS_DB_URL` | PostgreSQL JDBC URL |
-| `MYFITNESS_DB_USERNAME` | PostgreSQLユーザー名 |
-| `MYFITNESS_DB_PASSWORD` | PostgreSQLパスワード |
+| `MYFITNESS_DB_USERNAME` | Spring Bootが通常のCRUDに使用するアプリ実行ロール |
+| `MYFITNESS_DB_PASSWORD` | アプリ実行ロールのパスワード |
 | `MYFITNESS_JWT_SECRET` | JWT署名秘密鍵（32文字以上の十分にランダムな値） |
+| `FLYWAY_URL` | 手動Flyway実行用JDBC URL |
+| `FLYWAY_USER` | Flyway専用マイグレーションロール |
+| `FLYWAY_PASSWORD` | Flyway専用ロールのパスワード |
 
-ローカルでは、Git管理外の`.env.backend.local`に値を設定し、所有者だけが読めるようにします。このファイルをコミットしないでください。
+`.env.backend.example`を参照し、ローカルではGit管理外の`.env.backend.local`に実値を設定します。管理者・アプリ・Flywayに同じロールやパスワードを設定しないでください。ファイルは所有者だけが読めるようにし、絶対にコミットしないでください。
 
 ```bash
 chmod 600 .env.backend.local
 ```
+
+#### 既存DBと新規DBの違い
+
+`POSTGRES_USER`と`POSTGRES_PASSWORD`は、PostgreSQLイメージが**空のデータディレクトリを初期化するときだけ**使用します。既存のDockerボリュームに対して環境変数を変更しても、DBロール、パスワード、所有者、権限は変更されません。
+
+- 既存の`demo_postgres-data`では、ロール移行を別手順で完了するまで、コンテナを再作成しないでください。
+- Compose設定の変更だけでは、現在SUPERUSERである既存`myfitness_user`は最小権限化されません。
+- 新規の空DBでは、まず`POSTGRES_ADMIN_USER`の管理者ロールと`myfitness` DBだけが初期化されます。
+- 新規DBのアプリロールとFlywayロールは自動作成されません。検証済みのロール作成・権限付与SQLを管理者が別途実行してからBackendを起動してください。
+- Spring Bootには`MYFITNESS_DB_*`だけを渡し、管理者用資格情報をアプリ設定へ流用しないでください。
+
+##### 既存DBのロール移行前
+
+現在の`.env.backend.local`には管理者用変数がないため、変更後のComposeファイルを使う`docker compose config`や`docker compose up`は、Dockerを操作する前に必須変数エラーで停止します。これは管理者とアプリの資格情報が再び共用されることを防ぐ、意図したfail-closed動作です。
+
+- エラー回避のため、既存`myfitness_user`を`POSTGRES_ADMIN_USER`へ設定してはいけません。それではロール分離にならず、SUPERUSERのアプリ利用を継続する危険な暫定対応になります。
+- 既存コンテナを直接再開しただけでは、新しいCompose環境変数は反映されず、DBロールも変わりません。
+- ロール移行が完了するまで、変更後のCompose設定による`up`やコンテナ再作成を実施せず、現在のコンテナと`demo_postgres-data`を維持してください。
+
+##### 既存DBのロール移行後
+
+既存DBを安全に移行する順序は次のとおりです。
+
+1. 最新バックアップと独立リストア結果を確認する。
+2. Backendからの書き込みを停止する。
+3. 現在の管理権限は移行作業だけに使用し、別名の管理者、NOLOGIN所有者、Flywayロールを作成する。既存`myfitness_user`はアプリロールとして維持する。
+4. 所有権と権限を移行し、既存`myfitness_user`へ必要なDML権限だけを付与して、SUPERUSER等の不要な属性を外す。
+5. 新しい管理者ロールが有効で、アプリロールが管理者・所有者ロールを継承しないことを確認する。
+6. アプリロールでHibernate validateとCRUD、DDL拒否を確認する。
+7. `.env.backend.local`の`POSTGRES_ADMIN_*`には新しい管理者を、`MYFITNESS_DB_*`には最小権限化したアプリロールを設定する。
+8. すべての検証が成功した後に限り、既存ボリュームを維持したまま必要なコンテナ再作成を行う。
+
+`POSTGRES_ADMIN_USER`と`MYFITNESS_DB_USERNAME`は必ず異なるロールにしてください。既存ボリュームを使う再作成では、Compose環境変数は既存ロールを作成・変更しないため、SQLによるロール移行を先に完了する必要があります。
+
+##### 新規DBの構築順序
+
+1. 管理者・Flyway・アプリで異なるロール名と資格情報を準備する。
+2. `POSTGRES_ADMIN_*`を使って空のPostgreSQLデータディレクトリを初期化する。
+3. 管理者でNOLOGIN所有者、Flyway、アプリの各ロールを作成し、必要な権限を付与する。
+4. Flyway専用ロールでマイグレーションを適用する。
+5. アプリロールでHibernate validateが成功することを確認してからBackendを公開する。
+
+ロール作成・権限付与SQLはComposeから自動実行されません。新規DBの起動直後にBackendを接続してはいけません。
+
+ロール移行前に`docker compose up --force-recreate`、`docker compose down -v`、ボリューム削除を実行してはいけません。
+
+以下のCompose起動手順は、新規構築時または既存DBのロール移行と`.env.backend.local`更新が完了した後だけ実行してください。未移行の既存環境では実行しないでください。
 
 Docker を起動します。
 
@@ -155,6 +207,8 @@ PostgreSQL を起動します。
 ```bash
 docker compose --env-file .env.backend.local up -d
 ```
+
+必要な管理者変数が未設定の場合、Composeは起動前の設定解決で`POSTGRES_ADMIN_USER is required`または`POSTGRES_ADMIN_PASSWORD is required`として停止します。
 
 環境変数を現在のシェルへ読み込み、Spring Bootアプリケーションを起動します。
 

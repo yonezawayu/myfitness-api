@@ -20,7 +20,18 @@
 #     include-message: always
 #     include-binding-errors: always
 
+debug: false
+trace: false
+
 spring:
+  devtools:
+    # Keep restart support available without DevTools' DEBUG-oriented logging defaults.
+    add-properties: false
+
+  mvc:
+    # Prevent request parameters and headers (including Authorization) from being logged.
+    log-request-details: false
+
   datasource:
     url: ${MYFITNESS_DB_URL}
     username: ${MYFITNESS_DB_USERNAME}
@@ -30,7 +41,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
 
   # Existing environments must be baselined and migrated manually before this
   # is enabled. Keeping it disabled prevents an application start from changing
@@ -40,8 +51,15 @@ spring:
 
 server:
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: OFF
 
 jwt:
   secret: ${MYFITNESS_JWT_SECRET}

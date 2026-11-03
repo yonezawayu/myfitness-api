@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./api-base-url";
+import { executeTrainingCreateRequest } from "./training-session-create";
 import { networkRegistrationError, registrationErrorForStatus } from "./user-registration";
 export { API_BASE_URL } from "./api-base-url";
 export const TOKEN_STORAGE_KEY = "myfitness_access_token";
@@ -478,24 +479,18 @@ export async function createTrainingSession(
   token: string,
   request: CreateTrainingSessionRequest
 ): Promise<TrainingSessionResponse> {
-  const response = await fetch(`${API_BASE_URL}/training-sessions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("認証情報が無効です。もう一度ログインしてください。");
-  }
-
-  if (!response.ok) {
-    throw new Error("Training Sessionの保存に失敗しました。入力内容を確認してください。");
-  }
-
-  return response.json();
+  return executeTrainingCreateRequest(
+    () =>
+      fetch(`${API_BASE_URL}/training-sessions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }),
+    "Training Sessionの保存に失敗しました。入力内容を確認してください。"
+  );
 }
 
 export async function updateTrainingSession(
@@ -545,24 +540,18 @@ export async function createTrainingExercise(
   sessionId: number,
   request: CreateTrainingExerciseRequest
 ): Promise<TrainingExerciseResponse> {
-  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("認証情報が無効です。もう一度ログインしてください。");
-  }
-
-  if (!response.ok) {
-    throw new Error("Training Exerciseの保存に失敗しました。入力内容を確認してください。");
-  }
-
-  return response.json();
+  return executeTrainingCreateRequest(
+    () =>
+      fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }),
+    "Training Exerciseの保存に失敗しました。入力内容を確認してください。"
+  );
 }
 
 export async function updateTrainingExercise(
@@ -614,24 +603,18 @@ export async function createTrainingSet(
   exerciseId: number,
   request: CreateTrainingSetRequest
 ): Promise<TrainingSetResponse> {
-  const response = await fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}/sets`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw new Error("認証情報が無効です。もう一度ログインしてください。");
-  }
-
-  if (!response.ok) {
-    throw new Error("Training Setの保存に失敗しました。入力内容を確認してください。");
-  }
-
-  return response.json();
+  return executeTrainingCreateRequest(
+    () =>
+      fetch(`${API_BASE_URL}/training-sessions/${sessionId}/exercises/${exerciseId}/sets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }),
+    "Training Setの保存に失敗しました。入力内容を確認してください。"
+  );
 }
 
 export async function updateTrainingSet(

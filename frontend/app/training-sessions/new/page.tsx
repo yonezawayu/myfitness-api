@@ -8,6 +8,16 @@ import {
   createTrainingSet,
   TOKEN_STORAGE_KEY
 } from "@/lib/api";
+import {
+  beginSaveAttempt,
+  createSaveAttemptGuard,
+  createTrainingCreateProgress,
+  finishSaveAttempt,
+  lockSaveAttempt,
+  recoveryAfterCreateError,
+  saveTrainingSessionDraft,
+  type TrainingCreateRecovery
+} from "@/lib/training-session-create";
 import { TRAINING_EXERCISES } from "@/lib/training-exercises";
 
 type SetForm = {
@@ -72,6 +82,8 @@ function NewTrainingSessionForm() {
   const [invalidExerciseIds, setInvalidExerciseIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveRecovery, setSaveRecovery] = useState<TrainingCreateRecovery | null>(null);
+  const saveAttemptGuardRef = useRef(createSaveAttemptGuard());
   const [restDuration, setRestDuration] = useState(90);
   const [remainingSeconds, setRemainingSeconds] = useState(90);
   const [restTimerStatus, setRestTimerStatus] = useState<RestTimerStatus>("idle");
@@ -317,10 +329,16 @@ function NewTrainingSessionForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!beginSaveAttempt(saveAttemptGuardRef.current)) {
+      return;
+    }
+
     setError("");
 
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (!token) {
+      finishSaveAttempt(saveAttemptGuardRef.current);
       router.replace("/");
       return;
     }
@@ -330,49 +348,74 @@ function NewTrainingSessionForm() {
     );
     setInvalidExerciseIds(unselectedExerciseIds);
     if (unselectedExerciseIds.size > 0) {
+      finishSaveAttempt(saveAttemptGuardRef.current);
       return;
     }
 
     const validationMessage = validateForm();
     if (validationMessage) {
       setError(validationMessage);
+      finishSaveAttempt(saveAttemptGuardRef.current);
       return;
     }
 
     setIsSubmitting(true);
+    const createProgress = createTrainingCreateProgress();
+    let saveSucceeded = false;
 
     try {
-      const createdSession = await createTrainingSession(token, {
-        date,
-        memo: memo.trim() || null
-      });
+      await saveTrainingSessionDraft(
+        {
+          date,
+          memo: memo.trim() || null,
+          exercises: exercises.map((exercise) => ({
+            exerciseName: exercise.exerciseName.trim(),
+            sets: exercise.sets.map((trainingSet, setIndex) => ({
+              setNumber: setIndex + 1,
+              weightKg: Number(trainingSet.weight),
+              reps: Number(trainingSet.reps)
+            }))
+          }))
+        },
+        {
+          createSession: (request) => createTrainingSession(token, request),
+          createExercise: (sessionId, request) =>
+            createTrainingExercise(token, sessionId, request),
+          createSet: (sessionId, exerciseId, request) =>
+            createTrainingSet(token, sessionId, exerciseId, request)
+        },
+        createProgress
+      );
 
-      for (const exercise of exercises) {
-        const createdExercise = await createTrainingExercise(token, createdSession.id, {
-          exerciseName: exercise.exerciseName.trim(),
-          memo: null
-        });
-
-        for (let setIndex = 0; setIndex < exercise.sets.length; setIndex += 1) {
-          const trainingSet = exercise.sets[setIndex];
-          await createTrainingSet(token, createdSession.id, createdExercise.id, {
-            setNumber: setIndex + 1,
-            weightKg: Number(trainingSet.weight),
-            reps: Number(trainingSet.reps),
-            memo: null
-          });
-        }
-      }
-
+      saveSucceeded = true;
       router.push("/training-sessions");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Training Sessionの保存に失敗しました。");
-      if (err instanceof Error && err.message.includes("ログイン")) {
+      const message = err instanceof Error ? err.message : "Training Sessionの保存に失敗しました。";
+      const recovery = recoveryAfterCreateError(createProgress, err);
+
+      if (recovery) {
+        lockSaveAttempt(saveAttemptGuardRef.current);
+        setSaveRecovery(recovery);
+        setError(
+          recovery.sessionId === null
+            ? `${recovery.stageLabel}の応答を受信できず、保存結果を確認できません。入力内容はこの画面に保持しています。自動再送は行いません。履歴一覧で重複の有無を確認してください。 ${message}`
+            : `${recovery.stageLabel}で保存が中断しました。Session ID ${recovery.sessionId}は作成済みです。${recovery.completedCount}件の成功応答を確認し、入力内容はこの画面に保持しています。自動削除・自動再送は行わないため、編集画面で最新状態を確認して不足分を補完してください。 ${message}`
+        );
+      } else {
+        finishSaveAttempt(saveAttemptGuardRef.current);
+        setError(message);
+      }
+
+      if (message.includes("ログイン")) {
         localStorage.removeItem(TOKEN_STORAGE_KEY);
-        router.replace("/");
+        if (!recovery) {
+          router.replace("/");
+        }
       }
     } finally {
-      setIsSubmitting(false);
+      if (!saveSucceeded) {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -663,7 +706,40 @@ function NewTrainingSessionForm() {
           ))}
 
           {error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+              <p>{error}</p>
+              {saveRecovery ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {saveRecovery.sessionId !== null ? (
+                    <a
+                      className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100"
+                      href={`/training-sessions/${saveRecovery.sessionId}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      作成済みSessionを別タブで確認・修正
+                    </a>
+                  ) : null}
+                  <a
+                    className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100"
+                    href="/training-sessions"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    履歴一覧を別タブで確認
+                  </a>
+                  {error.includes("ログイン") ? (
+                    <button
+                      className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100"
+                      type="button"
+                      onClick={() => router.push("/")}
+                    >
+                      ログイン画面へ
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -677,9 +753,9 @@ function NewTrainingSessionForm() {
             <button
               className="rounded-md bg-emerald-700 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-gray-400"
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || saveRecovery !== null}
             >
-              {isSubmitting ? "保存中..." : "保存"}
+              {isSubmitting ? "保存中..." : saveRecovery ? "保存結果の確認が必要です" : "保存"}
             </button>
           </div>
         </form>

@@ -1,15 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { login, TOKEN_STORAGE_KEY } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const successMessage =
+    searchParams.get("registered") === "1"
+      ? "ユーザー登録が完了しました。メールアドレスとパスワードでログインしてください。"
+      : "";
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -71,6 +77,12 @@ export default function LoginPage() {
             <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
           ) : null}
 
+          {successMessage ? (
+            <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+              {successMessage}
+            </p>
+          ) : null}
+
           <button
             className="w-full rounded-md bg-emerald-700 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-gray-400"
             type="submit"
@@ -79,7 +91,22 @@ export default function LoginPage() {
             {isSubmitting ? "ログイン中..." : "ログイン"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-gray-600">
+          アカウントをお持ちでないですか？{" "}
+          <Link className="font-medium text-emerald-700 hover:text-emerald-800" href="/register">
+            新規登録
+          </Link>
+        </p>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

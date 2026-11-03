@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./api-base-url";
+import { networkRegistrationError, registrationErrorForStatus } from "./user-registration";
 export { API_BASE_URL } from "./api-base-url";
 export const TOKEN_STORAGE_KEY = "myfitness_access_token";
 
@@ -6,6 +7,12 @@ export type LoginResponse = {
   accessToken: string;
   tokenType: string;
   expiresInSeconds: number;
+};
+
+export type UserResponse = {
+  id: number;
+  email: string;
+  role: string;
 };
 
 export type DashboardResponse = {
@@ -154,6 +161,29 @@ export async function login(email: string, password: string): Promise<LoginRespo
 
   if (!response.ok) {
     throw new Error("ログインに失敗しました。メールアドレスとパスワードを確認してください。");
+  }
+
+  return response.json();
+}
+
+export async function registerUser(email: string, password: string): Promise<UserResponse> {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
+  } catch {
+    throw networkRegistrationError();
+  }
+
+  const registrationError = registrationErrorForStatus(response.status);
+  if (registrationError) {
+    throw registrationError;
   }
 
   return response.json();

@@ -139,6 +139,7 @@ PostgreSQLの初期化管理者、Spring Bootのアプリ実行ロール、手�
 | `MYFITNESS_DB_USERNAME` | Spring Bootが通常のCRUDに使用するアプリ実行ロール |
 | `MYFITNESS_DB_PASSWORD` | アプリ実行ロールのパスワード |
 | `MYFITNESS_JWT_SECRET` | JWT署名秘密鍵（32文字以上の十分にランダムな値） |
+| `MYFITNESS_CORS_ALLOWED_ORIGINS` | 許可するFrontend Origin（複数の場合はカンマ区切り） |
 | `FLYWAY_URL` | 手動Flyway実行用JDBC URL |
 | `FLYWAY_USER` | Flyway専用マイグレーションロール |
 | `FLYWAY_PASSWORD` | Flyway専用ロールのパスワード |
@@ -250,7 +251,27 @@ npm run dev
 http://localhost:3000
 ```
 
-フロントエンドは `http://localhost:8080` の API に接続します。
+ローカル開発では、`frontend/.env.local`に次の値を設定できます。未設定の場合もdevelopment環境に限り`http://localhost:8080`を使用します。
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+```
+
+Backend側のローカルCORS設定は次のとおりです。未設定の場合、`prod`または`production`以外のプロファイルに限り`http://localhost:3000`を許可します。
+
+```dotenv
+MYFITNESS_CORS_ALLOWED_ORIGINS=http://localhost:3000
+```
+
+公開環境では、Frontendの**ビルド前**に公開Backend URLを指定し、Backendでは`prod`プロファイルと許可するFrontend Originを明示します。
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+SPRING_PROFILES_ACTIVE=prod
+MYFITNESS_CORS_ALLOWED_ORIGINS=https://app.example.com
+```
+
+`NEXT_PUBLIC_*`はブラウザへ公開され、Next.jsのビルド時に埋め込まれます。パスワード、JWT秘密鍵、APIキーなどの秘密情報を設定してはいけません。本番ビルドでは`NEXT_PUBLIC_API_BASE_URL`の未設定、HTTP、localhostを拒否します。Backendの本番プロファイルではCORS Originの未設定、HTTP、localhost、ワイルドカード、不正なOriginを拒否します。複数Originはカンマ区切りで指定し、必要なHTTPS Originだけを列挙してください。
 
 ## Swagger 確認手順
 

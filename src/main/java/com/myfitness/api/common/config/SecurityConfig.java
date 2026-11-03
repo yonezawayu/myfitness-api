@@ -3,6 +3,9 @@ package com.myfitness.api.common.config;
 import com.myfitness.api.auth.jwt.JwtFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -22,6 +25,15 @@ import jakarta.servlet.http.HttpServletResponse;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+        private final List<String> allowedOrigins;
+
+        public SecurityConfig(
+                        @Value("${myfitness.cors.allowed-origins:}") String configuredAllowedOrigins,
+                        Environment environment) {
+                boolean production = environment.acceptsProfiles(Profiles.of("prod", "production"));
+                this.allowedOrigins = CorsAllowedOrigins.resolve(configuredAllowedOrigins, production);
+        }
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
@@ -56,7 +68,7 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+                configuration.setAllowedOrigins(allowedOrigins);
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
                 configuration.setAllowCredentials(true);

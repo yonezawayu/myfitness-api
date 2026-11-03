@@ -1,4 +1,5 @@
-export const API_BASE_URL = "http://localhost:8080";
+import { API_BASE_URL } from "./api-base-url";
+export { API_BASE_URL } from "./api-base-url";
 export const TOKEN_STORAGE_KEY = "myfitness_access_token";
 
 export type LoginResponse = {

@@ -114,6 +114,25 @@ class AuthenticationLoggingIntegrationTest {
         assertThat(loginResponse).contains("[REDACTED]");
     }
 
+    @Test
+    void duplicateEmailReturnsConflict() throws Exception {
+        String uniqueValue = UUID.randomUUID().toString();
+        UserCreateRequest request = new UserCreateRequest(
+                "duplicate-" + uniqueValue + "@example.com",
+                "Password-" + uniqueValue);
+        String requestBody = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isConflict());
+    }
+
     private void assertSecretIsAbsent(String text, String secret, String description) {
         assertThat(text.contains(secret))
                 .as("logs must not contain %s", description)

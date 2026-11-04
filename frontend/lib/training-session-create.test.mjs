@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  TrainingCreateConflictError,
+  TrainingCreateDraftChangedError,
   TrainingCreateResultUnknownError,
+  beginLockedRetry,
   beginSaveAttempt,
+  createPendingTrainingSave,
   createSaveAttemptGuard,
-  createTrainingCreateProgress,
   executeTrainingCreateRequest,
   finishSaveAttempt,
   lockSaveAttempt,
-  recoveryAfterCreateError,
+  pendingSaveMatchesDraft,
   saveTrainingSessionDraft
 } from "./training-session-create.ts";
 
@@ -17,210 +20,124 @@ function draft() {
   return {
     date: "2026-11-03",
     memo: "test",
-    exercises: [
-      {
-        exerciseName: "ベンチプレス",
-        sets: [
-          { setNumber: 1, weightKg: 60, reps: 10 },
-          { setNumber: 2, weightKg: 65, reps: 8 }
-        ]
-      }
-    ]
+    exercises: [{
+      exerciseName: "ベンチプレス",
+      memo: null,
+      sets: [
+        { setNumber: 1, weightKg: 60, reps: 10, memo: null },
+        { setNumber: 2, weightKg: 65, reps: 8, memo: null }
+      ]
+    }]
   };
 }
 
-test("全API成功時はSession、Exercise、Setを順番に1回ずつ作成する", async () => {
-  const calls = [];
-  const progress = createTrainingCreateProgress();
+test("一括APIを1回だけ呼び出して作成結果を返す", async () => {
   const input = draft();
-  const originalInput = structuredClone(input);
-  const sessionId = await saveTrainingSessionDraft(
-    input,
-    {
-      createSession: async () => {
-        calls.push("session");
-        return { id: 10 };
-      },
-      createExercise: async (createdSessionId) => {
-        calls.push(`exercise:${createdSessionId}`);
-        return { id: 20 };
-      },
-      createSet: async (createdSessionId, exerciseId, request) => {
-        calls.push(`set:${createdSessionId}:${exerciseId}:${request.setNumber}`);
-      }
-    },
-    progress
-  );
+  const pending = createPendingTrainingSave(input, () => "key-1");
+  const calls = [];
+  const id = await saveTrainingSessionDraft(input, {
+    createComplete: async (key, request) => {
+      calls.push({ key, request });
+      return { id: 10 };
+    }
+  }, pending);
 
-  assert.equal(sessionId, 10);
-  assert.deepEqual(calls, ["session", "exercise:10", "set:10:20:1", "set:10:20:2"]);
-  assert.equal(progress.completedCount, 4);
-  assert.deepEqual(input, originalInput);
+  assert.equal(id, 10);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].key, "key-1");
+  assert.deepEqual(calls[0].request, input);
 });
 
-test("保存開始直後の連打を拒否し、明確な失敗後だけ再試行できる", () => {
+test("保存開始直後の連打を拒否する", () => {
   const guard = createSaveAttemptGuard();
-
   assert.equal(beginSaveAttempt(guard), true);
   assert.equal(beginSaveAttempt(guard), false);
   finishSaveAttempt(guard);
   assert.equal(beginSaveAttempt(guard), true);
 });
 
-test("保存結果不明でロックした後は自動再POSTできない", () => {
+test("結果不明ロック後は通常保存を拒否し明示的再試行だけ許可する", () => {
   const guard = createSaveAttemptGuard();
   assert.equal(beginSaveAttempt(guard), true);
   lockSaveAttempt(guard);
-
   assert.equal(beginSaveAttempt(guard), false);
+  assert.equal(beginLockedRetry(guard), true);
+  assert.equal(beginLockedRetry(guard), false);
 });
 
-test("通信断と成功レスポンス解析失敗を保存結果不明として分類する", async () => {
+test("同じ保存操作の再試行は同じ冪等キーを使用する", async () => {
+  const input = draft();
+  const pending = createPendingTrainingSave(input, () => "same-key");
+  const keys = [];
+  const api = {
+    createComplete: async (key) => {
+      keys.push(key);
+      if (keys.length === 1) {
+        throw new TrainingCreateResultUnknownError("lost");
+      }
+      return { id: 11 };
+    }
+  };
+
+  await assert.rejects(saveTrainingSessionDraft(input, api, pending), TrainingCreateResultUnknownError);
+  assert.equal(await saveTrainingSessionDraft(input, api, pending), 11);
+  assert.deepEqual(keys, ["same-key", "same-key"]);
+});
+
+test("新しい保存操作には新しい冪等キーを生成する", () => {
+  let index = 0;
+  const keyFactory = () => `key-${++index}`;
+  assert.notEqual(
+    createPendingTrainingSave(draft(), keyFactory).idempotencyKey,
+    createPendingTrainingSave(draft(), keyFactory).idempotencyKey
+  );
+});
+
+test("結果不明後に入力が変わった場合はPOSTしない", async () => {
+  const original = draft();
+  const changed = structuredClone(original);
+  changed.memo = "changed";
+  const pending = createPendingTrainingSave(original, () => "key");
+  let callCount = 0;
+
+  assert.equal(pendingSaveMatchesDraft(pending, changed), false);
   await assert.rejects(
-    executeTrainingCreateRequest(async () => {
-      throw new Error("connection lost");
-    }, "rejected"),
+    saveTrainingSessionDraft(changed, {
+      createComplete: async () => {
+        callCount += 1;
+        return { id: 1 };
+      }
+    }, pending),
+    TrainingCreateDraftChangedError
+  );
+  assert.equal(callCount, 0);
+});
+
+test("通信断、5xx、成功レスポンス解析失敗は保存結果不明", async () => {
+  await assert.rejects(
+    executeTrainingCreateRequest(async () => { throw new Error("lost"); }, "failed"),
     TrainingCreateResultUnknownError
   );
-
   await assert.rejects(
-    executeTrainingCreateRequest(
-      async () => new Response("not-json", { status: 201 }),
-      "rejected"
-    ),
+    executeTrainingCreateRequest(async () => new Response("", { status: 500 }), "failed"),
+    TrainingCreateResultUnknownError
+  );
+  await assert.rejects(
+    executeTrainingCreateRequest(async () => new Response("not-json", { status: 201 }), "failed"),
     TrainingCreateResultUnknownError
   );
 });
 
-test("4xxレスポンスは明確な失敗として扱う", async () => {
+test("409は冪等キー競合として分類する", async () => {
   await assert.rejects(
-    executeTrainingCreateRequest(
-      async () => new Response("", { status: 400 }),
-      "入力内容を確認してください。"
-    ),
-    (error) =>
-      error instanceof Error &&
-      !(error instanceof TrainingCreateResultUnknownError) &&
-      error.message === "入力内容を確認してください。"
+    executeTrainingCreateRequest(async () => new Response("", { status: 409 }), "failed"),
+    TrainingCreateConflictError
   );
 });
 
-test("5xxレスポンスは保存結果不明として扱う", async () => {
+test("明確な4xxでは通常エラーを返す", async () => {
   await assert.rejects(
-    executeTrainingCreateRequest(
-      async () => new Response("", { status: 500 }),
-      "保存に失敗しました。"
-    ),
-    TrainingCreateResultUnknownError
+    executeTrainingCreateRequest(async () => new Response("", { status: 400 }), "入力エラー"),
+    (error) => error instanceof Error && error.message === "入力エラー"
   );
-});
-
-test("Session作成前の明確なHTTP失敗では復旧ロックしない", () => {
-  const progress = createTrainingCreateProgress();
-  progress.mutationStarted = true;
-  progress.currentStage = { kind: "session" };
-
-  assert.equal(recoveryAfterCreateError(progress, new Error("400 Bad Request")), null);
-});
-
-test("Session作成後のExercise失敗ではSession ID付き復旧状態にする", async () => {
-  const progress = createTrainingCreateProgress();
-
-  await assert.rejects(
-    saveTrainingSessionDraft(
-      draft(),
-      {
-        createSession: async () => ({ id: 10 }),
-        createExercise: async () => {
-          throw new Error("Exercise rejected");
-        },
-        createSet: async () => undefined
-      },
-      progress
-    )
-  );
-
-  assert.deepEqual(recoveryAfterCreateError(progress, new Error("Exercise rejected")), {
-    kind: "partial",
-    sessionId: 10,
-    stageLabel: "種目1（ベンチプレス）の作成",
-    completedCount: 1,
-    resultUnknown: false
-  });
-});
-
-test("Exercise作成後のSet失敗では完了応答数と失敗箇所を保持する", async () => {
-  const progress = createTrainingCreateProgress();
-
-  await assert.rejects(
-    saveTrainingSessionDraft(
-      draft(),
-      {
-        createSession: async () => ({ id: 10 }),
-        createExercise: async () => ({ id: 20 }),
-        createSet: async () => {
-          throw new Error("Set rejected");
-        }
-      },
-      progress
-    )
-  );
-
-  const recovery = recoveryAfterCreateError(progress, new Error("Set rejected"));
-  assert.equal(recovery?.sessionId, 10);
-  assert.equal(recovery?.completedCount, 2);
-  assert.match(recovery?.stageLabel ?? "", /セット1/);
-});
-
-test("Session POSTのレスポンス喪失時はID不明として履歴確認を要求する", async () => {
-  const progress = createTrainingCreateProgress();
-  const connectionLost = new TrainingCreateResultUnknownError("connection lost");
-
-  await assert.rejects(
-    saveTrainingSessionDraft(
-      draft(),
-      {
-        createSession: async () => {
-          throw connectionLost;
-        },
-        createExercise: async () => ({ id: 20 }),
-        createSet: async () => undefined
-      },
-      progress
-    ),
-    TrainingCreateResultUnknownError
-  );
-
-  assert.deepEqual(recoveryAfterCreateError(progress, connectionLost), {
-    kind: "unknown-session",
-    sessionId: null,
-    stageLabel: "Sessionの作成",
-    completedCount: 0,
-    resultUnknown: true
-  });
-});
-
-test("Set POSTのレスポンス喪失時は作成済みSessionの編集導線を使用する", async () => {
-  const progress = createTrainingCreateProgress();
-  const connectionLost = new TrainingCreateResultUnknownError("connection lost");
-
-  await assert.rejects(
-    saveTrainingSessionDraft(
-      draft(),
-      {
-        createSession: async () => ({ id: 10 }),
-        createExercise: async () => ({ id: 20 }),
-        createSet: async () => {
-          throw connectionLost;
-        }
-      },
-      progress
-    ),
-    TrainingCreateResultUnknownError
-  );
-
-  const recovery = recoveryAfterCreateError(progress, connectionLost);
-  assert.equal(recovery?.kind, "partial");
-  assert.equal(recovery?.sessionId, 10);
-  assert.equal(recovery?.resultUnknown, true);
 });

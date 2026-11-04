@@ -29,7 +29,7 @@ import com.myfitness.api.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 
 @DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
-@Import(TrainingSessionService.class)
+@Import({ TrainingSessionService.class, TrainingSessionCreationLock.class })
 class TrainingSessionServiceIntegrationTest {
 
     @Autowired

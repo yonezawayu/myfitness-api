@@ -1,6 +1,7 @@
 package com.myfitness.api.training.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -9,14 +10,17 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.myfitness.api.training.dto.TrainingExerciseRequest;
 import com.myfitness.api.training.dto.TrainingExerciseResponse;
+import com.myfitness.api.training.dto.TrainingSessionAggregateRequest;
 import com.myfitness.api.training.dto.TrainingSessionRequest;
 import com.myfitness.api.training.dto.TrainingSessionResponse;
 import com.myfitness.api.training.dto.TrainingSetRequest;
 import com.myfitness.api.training.dto.TrainingSetResponse;
 import com.myfitness.api.training.entity.TrainingExercise;
 import com.myfitness.api.training.entity.TrainingSession;
+import com.myfitness.api.training.entity.TrainingSessionCreation;
 import com.myfitness.api.training.entity.TrainingSet;
 import com.myfitness.api.training.repository.TrainingExerciseRepository;
+import com.myfitness.api.training.repository.TrainingSessionCreationRepository;
 import com.myfitness.api.training.repository.TrainingSessionRepository;
 import com.myfitness.api.training.repository.TrainingSetRepository;
 import com.myfitness.api.user.entity.User;
@@ -29,16 +33,22 @@ public class TrainingSessionService {
     private final TrainingSessionRepository trainingSessionRepository;
     private final TrainingExerciseRepository trainingExerciseRepository;
     private final TrainingSetRepository trainingSetRepository;
+    private final TrainingSessionCreationRepository trainingSessionCreationRepository;
+    private final TrainingSessionCreationLock trainingSessionCreationLock;
     private final UserRepository userRepository;
 
     public TrainingSessionService(
             TrainingSessionRepository trainingSessionRepository,
             TrainingExerciseRepository trainingExerciseRepository,
             TrainingSetRepository trainingSetRepository,
+            TrainingSessionCreationRepository trainingSessionCreationRepository,
+            TrainingSessionCreationLock trainingSessionCreationLock,
             UserRepository userRepository) {
         this.trainingSessionRepository = trainingSessionRepository;
         this.trainingExerciseRepository = trainingExerciseRepository;
         this.trainingSetRepository = trainingSetRepository;
+        this.trainingSessionCreationRepository = trainingSessionCreationRepository;
+        this.trainingSessionCreationLock = trainingSessionCreationLock;
         this.userRepository = userRepository;
     }
 
@@ -59,6 +69,56 @@ public class TrainingSessionService {
         User user = findAuthenticatedUser(userEmail);
         TrainingSession trainingSession = new TrainingSession(request.date(), request.memo(), user);
         return toSessionResponse(trainingSessionRepository.save(trainingSession));
+    }
+
+    @Transactional
+    public TrainingSessionCreationResult createCompleteSession(
+            String userEmail,
+            UUID idempotencyKey,
+            TrainingSessionAggregateRequest request) {
+        validateSetNumbers(request);
+
+        User user = findAuthenticatedUser(userEmail);
+        trainingSessionCreationLock.lock(user, idempotencyKey);
+        String requestHash = TrainingSessionRequestHasher.hash(request);
+        var existingCreation = trainingSessionCreationRepository
+                .findByUserIdAndIdempotencyKey(user.getId(), idempotencyKey);
+
+        if (existingCreation.isPresent()) {
+            TrainingSessionCreation creation = existingCreation.get();
+            if (!creation.getRequestHash().equals(requestHash)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "The idempotency key was already used for different content");
+            }
+
+            TrainingSession existingSession = creation.getTrainingSession();
+            if (existingSession == null || !existingSession.getUser().getId().equals(user.getId())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "The original result for this idempotency key is no longer available");
+            }
+            return new TrainingSessionCreationResult(toSessionResponse(existingSession), true);
+        }
+
+        TrainingSession session = new TrainingSession(request.date(), request.memo(), user);
+        for (TrainingSessionAggregateRequest.Exercise exerciseRequest : request.exercises()) {
+            TrainingExercise exercise = new TrainingExercise(exerciseRequest.exerciseName(), exerciseRequest.memo());
+            session.addExercise(exercise);
+
+            for (TrainingSessionAggregateRequest.Set setRequest : exerciseRequest.sets()) {
+                exercise.addSet(new TrainingSet(
+                        setRequest.setNumber(),
+                        setRequest.weightKg(),
+                        setRequest.reps(),
+                        setRequest.memo()));
+            }
+        }
+
+        TrainingSession savedSession = trainingSessionRepository.save(session);
+        trainingSessionCreationRepository.saveAndFlush(
+                new TrainingSessionCreation(user, idempotencyKey, requestHash, savedSession));
+        return new TrainingSessionCreationResult(toSessionResponse(savedSession), false);
     }
 
     @Transactional
@@ -184,6 +244,18 @@ public class TrainingSessionService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Authenticated user not found"));
+    }
+
+    private void validateSetNumbers(TrainingSessionAggregateRequest request) {
+        for (TrainingSessionAggregateRequest.Exercise exercise : request.exercises()) {
+            for (int index = 0; index < exercise.sets().size(); index++) {
+                if (exercise.sets().get(index).setNumber() != index + 1) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Set numbers must be consecutive and start at 1");
+                }
+            }
+        }
     }
 
     private TrainingSession findSession(Long userId, Long sessionId) {

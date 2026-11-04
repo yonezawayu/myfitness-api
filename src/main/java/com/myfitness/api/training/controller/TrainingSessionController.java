@@ -1,6 +1,7 @@
 package com.myfitness.api.training.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,10 +13,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.myfitness.api.training.dto.TrainingExerciseRequest;
 import com.myfitness.api.training.dto.TrainingExerciseResponse;
+import com.myfitness.api.training.dto.TrainingSessionAggregateRequest;
 import com.myfitness.api.training.dto.TrainingSessionRequest;
 import com.myfitness.api.training.dto.TrainingSessionResponse;
 import com.myfitness.api.training.dto.TrainingSetRequest;
@@ -54,6 +57,27 @@ public class TrainingSessionController {
             @Valid @RequestBody TrainingSessionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(trainingSessionService.createSession(authentication.getName(), request));
+    }
+
+    @PostMapping("/complete")
+    public ResponseEntity<TrainingSessionResponse> createCompleteSession(
+            Authentication authentication,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody TrainingSessionAggregateRequest request) {
+        UUID parsedKey;
+        try {
+            parsedKey = UUID.fromString(idempotencyKey);
+        } catch (IllegalArgumentException exception) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Idempotency-Key must be a UUID");
+        }
+
+        var result = trainingSessionService.createCompleteSession(
+                authentication.getName(), parsedKey, request);
+        return ResponseEntity.status(result.replayed() ? HttpStatus.OK : HttpStatus.CREATED)
+                .header("Idempotency-Replayed", Boolean.toString(result.replayed()))
+                .body(result.response());
     }
 
     @PutMapping("/{sessionId}")

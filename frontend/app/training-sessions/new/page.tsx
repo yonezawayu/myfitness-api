@@ -3,20 +3,22 @@
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  createTrainingExercise,
-  createTrainingSession,
-  createTrainingSet,
+  createCompleteTrainingSession,
   TOKEN_STORAGE_KEY
 } from "@/lib/api";
 import {
   beginSaveAttempt,
+  beginLockedRetry,
+  createPendingTrainingSave,
   createSaveAttemptGuard,
-  createTrainingCreateProgress,
   finishSaveAttempt,
   lockSaveAttempt,
-  recoveryAfterCreateError,
   saveTrainingSessionDraft,
-  type TrainingCreateRecovery
+  TrainingCreateConflictError,
+  TrainingCreateDraftChangedError,
+  TrainingCreateResultUnknownError,
+  type PendingTrainingSave,
+  type TrainingSessionDraft
 } from "@/lib/training-session-create";
 import { TRAINING_EXERCISES } from "@/lib/training-exercises";
 
@@ -82,8 +84,9 @@ function NewTrainingSessionForm() {
   const [invalidExerciseIds, setInvalidExerciseIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [saveRecovery, setSaveRecovery] = useState<TrainingCreateRecovery | null>(null);
+  const [saveNeedsConfirmation, setSaveNeedsConfirmation] = useState(false);
   const saveAttemptGuardRef = useRef(createSaveAttemptGuard());
+  const pendingSaveRef = useRef<PendingTrainingSave | null>(null);
   const [restDuration, setRestDuration] = useState(90);
   const [remainingSeconds, setRemainingSeconds] = useState(90);
   const [restTimerStatus, setRestTimerStatus] = useState<RestTimerStatus>("idle");
@@ -327,6 +330,71 @@ function NewTrainingSessionForm() {
     return "";
   }
 
+  function currentDraft(): TrainingSessionDraft {
+    return {
+      date,
+      memo: memo.trim() || null,
+      exercises: exercises.map((exercise) => ({
+        exerciseName: exercise.exerciseName.trim(),
+        memo: null,
+        sets: exercise.sets.map((trainingSet, setIndex) => ({
+          setNumber: setIndex + 1,
+          weightKg: Number(trainingSet.weight),
+          reps: Number(trainingSet.reps),
+          memo: null
+        }))
+      }))
+    };
+  }
+
+  async function runSave(
+    token: string,
+    draft: TrainingSessionDraft,
+    pendingSave: PendingTrainingSave
+  ) {
+    try {
+      await saveTrainingSessionDraft(
+        draft,
+        {
+          createComplete: (idempotencyKey, request) =>
+            createCompleteTrainingSession(token, idempotencyKey, request)
+        },
+        pendingSave
+      );
+      router.push("/training-sessions");
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Training Sessionの保存に失敗しました。";
+      const resultUnknown = err instanceof TrainingCreateResultUnknownError;
+      const conflict = err instanceof TrainingCreateConflictError;
+      const draftChanged = err instanceof TrainingCreateDraftChangedError;
+
+      if (resultUnknown || conflict || draftChanged) {
+        lockSaveAttempt(saveAttemptGuardRef.current);
+        setSaveNeedsConfirmation(true);
+        setError(
+          resultUnknown
+            ? `${message} 同じ保存IDでのみ安全に再試行できます。入力内容を変更せず再試行するか、履歴一覧を確認してください。`
+            : message
+        );
+      } else {
+        finishSaveAttempt(saveAttemptGuardRef.current);
+        pendingSaveRef.current = null;
+        setError(message);
+      }
+
+      if (message.includes("ログイン")) {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        if (!resultUnknown && !conflict && !draftChanged) {
+          router.replace("/");
+        }
+      }
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -360,63 +428,27 @@ function NewTrainingSessionForm() {
     }
 
     setIsSubmitting(true);
-    const createProgress = createTrainingCreateProgress();
-    let saveSucceeded = false;
+    const draft = currentDraft();
+    const pendingSave = createPendingTrainingSave(draft);
+    pendingSaveRef.current = pendingSave;
+    await runSave(token, draft, pendingSave);
+  }
 
-    try {
-      await saveTrainingSessionDraft(
-        {
-          date,
-          memo: memo.trim() || null,
-          exercises: exercises.map((exercise) => ({
-            exerciseName: exercise.exerciseName.trim(),
-            sets: exercise.sets.map((trainingSet, setIndex) => ({
-              setNumber: setIndex + 1,
-              weightKg: Number(trainingSet.weight),
-              reps: Number(trainingSet.reps)
-            }))
-          }))
-        },
-        {
-          createSession: (request) => createTrainingSession(token, request),
-          createExercise: (sessionId, request) =>
-            createTrainingExercise(token, sessionId, request),
-          createSet: (sessionId, exerciseId, request) =>
-            createTrainingSet(token, sessionId, exerciseId, request)
-        },
-        createProgress
-      );
-
-      saveSucceeded = true;
-      router.push("/training-sessions");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Training Sessionの保存に失敗しました。";
-      const recovery = recoveryAfterCreateError(createProgress, err);
-
-      if (recovery) {
-        lockSaveAttempt(saveAttemptGuardRef.current);
-        setSaveRecovery(recovery);
-        setError(
-          recovery.sessionId === null
-            ? `${recovery.stageLabel}の応答を受信できず、保存結果を確認できません。入力内容はこの画面に保持しています。自動再送は行いません。履歴一覧で重複の有無を確認してください。 ${message}`
-            : `${recovery.stageLabel}で保存が中断しました。Session ID ${recovery.sessionId}は作成済みです。${recovery.completedCount}件の成功応答を確認し、入力内容はこの画面に保持しています。自動削除・自動再送は行わないため、編集画面で最新状態を確認して不足分を補完してください。 ${message}`
-        );
-      } else {
-        finishSaveAttempt(saveAttemptGuardRef.current);
-        setError(message);
-      }
-
-      if (message.includes("ログイン")) {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        if (!recovery) {
-          router.replace("/");
-        }
-      }
-    } finally {
-      if (!saveSucceeded) {
-        setIsSubmitting(false);
-      }
+  async function retryUnknownSave() {
+    if (!beginLockedRetry(saveAttemptGuardRef.current) || !pendingSaveRef.current) {
+      return;
     }
+
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) {
+      finishSaveAttempt(saveAttemptGuardRef.current);
+      setError("認証情報が無効です。もう一度ログインしてください。");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+    await runSave(token, currentDraft(), pendingSaveRef.current);
   }
 
   if (selectedExerciseNames.length === 0) {
@@ -708,18 +740,16 @@ function NewTrainingSessionForm() {
           {error ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
               <p>{error}</p>
-              {saveRecovery ? (
+              {saveNeedsConfirmation ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {saveRecovery.sessionId !== null ? (
-                    <a
-                      className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100"
-                      href={`/training-sessions/${saveRecovery.sessionId}/edit`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      作成済みSessionを別タブで確認・修正
-                    </a>
-                  ) : null}
+                  <button
+                    className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100 disabled:opacity-50"
+                    type="button"
+                    onClick={retryUnknownSave}
+                    disabled={isSubmitting}
+                  >
+                    同じ保存IDで再試行
+                  </button>
                   <a
                     className="rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-900 transition hover:bg-red-100"
                     href="/training-sessions"
@@ -753,9 +783,9 @@ function NewTrainingSessionForm() {
             <button
               className="rounded-md bg-emerald-700 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-gray-400"
               type="submit"
-              disabled={isSubmitting || saveRecovery !== null}
+              disabled={isSubmitting || saveNeedsConfirmation}
             >
-              {isSubmitting ? "保存中..." : saveRecovery ? "保存結果の確認が必要です" : "保存"}
+              {isSubmitting ? "保存中..." : saveNeedsConfirmation ? "保存結果の確認が必要です" : "保存"}
             </button>
           </div>
         </form>

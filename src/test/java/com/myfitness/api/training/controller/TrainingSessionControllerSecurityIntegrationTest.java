@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myfitness.api.auth.jwt.JwtProvider;
 import com.myfitness.api.training.dto.TrainingExerciseRequest;
 import com.myfitness.api.training.dto.TrainingExerciseResponse;
+import com.myfitness.api.training.dto.TrainingSessionAggregateRequest;
 import com.myfitness.api.training.dto.TrainingSessionRequest;
 import com.myfitness.api.training.dto.TrainingSessionResponse;
 import com.myfitness.api.training.dto.TrainingSetRequest;
@@ -95,6 +97,71 @@ class TrainingSessionControllerSecurityIntegrationTest {
     void unauthenticatedRequestReturnsUnauthorized() throws Exception {
         mockMvc.perform(get("/training-sessions"))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/training-sessions/complete")
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void completeCreationIsAtomicIdempotentAndUserScoped() throws Exception {
+        UUID key = UUID.randomUUID();
+        TrainingSessionAggregateRequest request = aggregateRequest("created", BigDecimal.valueOf(80));
+
+        JsonNode first = responseJson(mockMvc.perform(completeRequest(userAToken, key, request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.exercises[0].sets.length()").value(2))
+                .andReturn());
+
+        mockMvc.perform(completeRequest(userAToken, key, request))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(first.get("id").asLong()))
+                .andExpect(result -> assertThat(result.getResponse().getHeader("Idempotency-Replayed"))
+                        .isEqualTo("true"));
+
+        mockMvc.perform(completeRequest(
+                        userAToken,
+                        key,
+                        aggregateRequest("different", BigDecimal.valueOf(80))))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(completeRequest(userBToken, key, request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(first.get("id").asLong())));
+
+        assertThat(trainingSessionRepository.count()).isEqualTo(2);
+        assertThat(trainingExerciseRepository.count()).isEqualTo(2);
+        assertThat(trainingSetRepository.count()).isEqualTo(4);
+    }
+
+    @Test
+    void completeCreationRejectsInvalidKeyValidationAndSetOrder() throws Exception {
+        TrainingSessionAggregateRequest request = aggregateRequest("created", BigDecimal.valueOf(80));
+        mockMvc.perform(jsonRequest(post("/training-sessions/complete"), userAToken, request)
+                        .header("Idempotency-Key", "not-a-uuid"))
+                .andExpect(status().isBadRequest());
+
+        String emptyExercises = """
+                {"date":"2026-10-14","memo":null,"exercises":[]}
+                """;
+        mockMvc.perform(authenticated(post("/training-sessions/complete"), userAToken)
+                        .header("Idempotency-Key", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(emptyExercises))
+                .andExpect(status().isBadRequest());
+
+        TrainingSessionAggregateRequest invalidOrder = new TrainingSessionAggregateRequest(
+                LocalDate.of(2026, 10, 14),
+                null,
+                List.of(new TrainingSessionAggregateRequest.Exercise(
+                        "スクワット",
+                        null,
+                        List.of(new TrainingSessionAggregateRequest.Set(
+                                2, BigDecimal.valueOf(80), 8, null)))));
+        mockMvc.perform(completeRequest(userAToken, UUID.randomUUID(), invalidOrder))
+                .andExpect(status().isBadRequest());
+        assertThat(trainingSessionRepository.count()).isZero();
     }
 
     @Test
@@ -301,6 +368,26 @@ class TrainingSessionControllerSecurityIntegrationTest {
                 sessionId,
                 exerciseId,
                 new TrainingSetRequest(1, BigDecimal.valueOf(80), 8, null));
+    }
+
+    private TrainingSessionAggregateRequest aggregateRequest(String memo, BigDecimal weight) {
+        return new TrainingSessionAggregateRequest(
+                LocalDate.of(2026, 10, 14),
+                memo,
+                List.of(new TrainingSessionAggregateRequest.Exercise(
+                        "スクワット",
+                        null,
+                        List.of(
+                                new TrainingSessionAggregateRequest.Set(1, weight, 8, null),
+                                new TrainingSessionAggregateRequest.Set(2, weight, 6, null)))));
+    }
+
+    private MockHttpServletRequestBuilder completeRequest(
+            String token,
+            UUID key,
+            TrainingSessionAggregateRequest request) throws Exception {
+        return jsonRequest(post("/training-sessions/complete"), token, request)
+                .header("Idempotency-Key", key.toString());
     }
 
     private String generateToken(User user) {

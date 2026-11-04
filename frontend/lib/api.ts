@@ -1,5 +1,8 @@
 import { API_BASE_URL } from "./api-base-url";
-import { executeTrainingCreateRequest } from "./training-session-create";
+import {
+  executeTrainingCreateRequest,
+  type TrainingSessionDraft
+} from "./training-session-create";
 import { networkRegistrationError, registrationErrorForStatus } from "./user-registration";
 export { API_BASE_URL } from "./api-base-url";
 export const TOKEN_STORAGE_KEY = "myfitness_access_token";
@@ -486,6 +489,26 @@ export async function createTrainingSession(
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }),
+    "Training Sessionの保存に失敗しました。入力内容を確認してください。"
+  );
+}
+
+export async function createCompleteTrainingSession(
+  token: string,
+  idempotencyKey: string,
+  request: TrainingSessionDraft
+): Promise<TrainingSessionResponse> {
+  return executeTrainingCreateRequest(
+    () =>
+      fetch(`${API_BASE_URL}/training-sessions/complete`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey
         },
         body: JSON.stringify(request)
       }),

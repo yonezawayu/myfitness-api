@@ -6,14 +6,22 @@ on:
   push:
     branches: ["develop", "main"]
 
+permissions:
+  contents: read
+
 jobs:
   ci-test:
     name: ci-test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -27,6 +35,9 @@ jobs:
 
       - name: Run backend tests
         run: ./mvnw -q test
+
+      - name: Compile backend
+        run: ./mvnw -q -DskipTests compile
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
@@ -42,3 +53,18 @@ jobs:
       - name: Run frontend tests
         working-directory: frontend
         run: npm test
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type-check frontend
+        working-directory: frontend
+        run: npx tsc --noEmit --incremental false
+
+      - name: Build frontend for production
+        working-directory: frontend
+        env:
+          # Public build-time setting only; CI never uses production credentials.
+          NEXT_PUBLIC_API_BASE_URL: https://api.example.invalid
+        run: npm run build

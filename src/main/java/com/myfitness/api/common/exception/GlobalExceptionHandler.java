@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
                                 new ErrorResponse(
                                                 ex.getStatusCode().value() >= 500 ? "INTERNAL_ERROR"
                                                                 : "VALIDATION_ERROR",
-                                                ex.getReason(),
+                                                ex.getStatusCode().value() >= 500 ? "Internal Server Error" : ex.getReason(),
                                                 null,
                                                 request.getRequestURI(),
                                                 OffsetDateTime.now()));

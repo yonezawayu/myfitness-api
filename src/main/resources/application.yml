@@ -50,6 +50,8 @@ spring:
     enabled: false
 
 server:
+  # Do not let arbitrary Forwarded / X-Forwarded-For headers alter the socket peer.
+  forward-headers-strategy: none
   error:
     include-message: never
     include-binding-errors: never
@@ -67,6 +69,11 @@ jwt:
   issuer: "myfitness-api"
 
 myfitness:
+  auth-rate-limit:
+    login-attempts: ${MYFITNESS_AUTH_LOGIN_ATTEMPTS:10}
+    registration-attempts: ${MYFITNESS_AUTH_REGISTRATION_ATTEMPTS:5}
+    window-seconds: ${MYFITNESS_AUTH_WINDOW_SECONDS:300}
+    max-entries: ${MYFITNESS_AUTH_MAX_ENTRIES:10000}
   cors:
     allowed-origins: ${MYFITNESS_CORS_ALLOWED_ORIGINS:}
   features:
@@ -84,3 +91,14 @@ myfitness:
       enabled: false
     foods:
       enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "prod | production"
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

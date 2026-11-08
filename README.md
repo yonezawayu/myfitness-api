@@ -416,3 +416,49 @@ Dashboard では、食事・体重を横断して、
 ```
 
 `practice` は JWT や CRUD の検証用の練習パッケージです。
+# 本番セキュリティ（M5-10）
+
+- Backendの本番判定は `SPRING_PROFILES_ACTIVE=prod` または `production`。
+  両方でSpringdoc API docs/UIを無効化し、標準Swagger関連パスへのアクセスもSecurityで拒否します。
+  本番で `SPRINGDOC_API_DOCS_ENABLED=true` / `SPRINGDOC_SWAGGER_UI_ENABLED=true` に上書きすると起動を拒否します。
+  開発時のSwagger利用は従来どおりです。本番CORSの公開Origin設定も引き続き必須です。
+- 認証レート制限は全環境で `POST /auth/login` と `POST /users` に適用します。
+  同一ソケット接続元IP・エンドポイントごとの固定窓で、成功・失敗・不正入力をすべて数えます。
+  初期値はログイン10回/300秒、登録5回/300秒。通常の手入力には余裕を持たせつつ
+  パスワード総当たり・大量登録を抑えるMVP向け初期値であり、運用状況と共有NATの影響を監視して調整してください。
+  超過時は429、汎用日本語メッセージ、秒単位の `Retry-After`、`Cache-Control: no-store` を返します。
+  CORSで `Retry-After` の読み取りを許可します。OPTIONSや通常の記録APIは対象外です。
+  設定変数は次のとおり（既存envファイルの変更は別途実施）：
+
+  | 変数 | 初期値 |
+  | --- | --- |
+  | `MYFITNESS_AUTH_LOGIN_ATTEMPTS` | 10 |
+  | `MYFITNESS_AUTH_REGISTRATION_ATTEMPTS` | 5 |
+  | `MYFITNESS_AUTH_WINDOW_SECONDS` | 300（1～86400） |
+  | `MYFITNESS_AUTH_MAX_ENTRIES` | 10000（1～100000、IPと操作種別の組ごとに1枠） |
+
+  メモリ内で件数上限・期限切れ回収を行い、満杯の際は新しい接続元も429で拒否します。
+  攻撃による枠占有で通常利用者も一時的に拒否される可能性があります。
+  再起動でリセットされ、複数インスタンスでは共有されません。公開入口のレート制限・監視を併用してください。
+  IPv4/IPv6を正規化しますが、別IPへの切り替え・IPv6アドレスローテーション・分散攻撃は防げません。
+- `server.forward-headers-strategy=none` とし、`Forwarded` / `X-Forwarded-For` / `X-Real-IP` を信用しません。
+  現状はプロキシ配下では全利用者がプロキシIPの枠を共有します。
+  本番リバースプロキシ導入時は、アプリ直アクセスをネットワークで遮断し、転送ヘッダーを入口で除去・再設定し、
+  信頼するプロキシの限定とIP判定を隔離検証してから設定変更してください。
+  フレームワークの転送ヘッダー処理だけを無条件に有効化しないでください。
+- Frontend本番応答には `nosniff`、`strict-origin-when-cross-origin`、カメラ/マイク/位置情報の禁止、
+  `X-Frame-Options: DENY`、限定的CSP（frame-ancestors/object-src/base-uri/form-action）を付与します。
+  APIの接続許可先は既存 `NEXT_PUBLIC_API_BASE_URL` の仕様を維持し、今回の限定CSPでは変更しません。
+  **これはスクリプトのXSS防止まで完成したCSPではありません。**
+  現状は静的生成とインラインstyle属性があり、Next.jsの初期化スクリプトもあるため、
+  `script-src 'self'` を付けるだけでは破損します。`unsafe-inline` / `unsafe-eval` は追加していません。
+  完全なCSPはnonce方式による動的描画・キャッシュ設計、インラインstyleの移行、ブラウザでの違反検証を別タスクで実施してください。
+- HSTSは本番ビルド前に公開Origin例 `MYFITNESS_FRONTEND_PUBLIC_ORIGIN=https://app.example.com` を明示した場合のみ、
+  そのホスト向けに `max-age=31536000` を付与します。HTTP/localhost/パス付きOrigin等は拒否します。
+  未設定ならHSTSを追加しません。開発環境やlocalhostホストには付けません。
+  公開時はTLS終端でHTTPS専用配信・HTTP→HTTPS転送を保証し、ホストとヘッダーを実HTTPSで再確認してください。
+  `includeSubDomains` / `preload` は未設定です。1年間HTTPS運用を維持できることが有効化の前提です。
+  これらはビルド時設定なので変更後は再ビルドが必要です。
+- JWTのlocalStorage保存は維持しています。XSS時のトークン盗難リスク、分散レート制限、
+  TLS/プロキシ境界、アクセスログの機密情報除外、監視・アラートは公開前に別途確認してください。
+  認証情報はDEBUG/TRACEやリクエスト本文・Authorizationのアクセスログへ出力しないでください。

@@ -642,12 +642,12 @@ function NewTrainingSessionForm() {
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[680px] table-fixed text-left text-sm">
                   <colgroup>
-                    <col style={{ width: "11%" }} />
-                    <col style={{ width: "7%" }} />
-                    <col style={{ width: "30%" }} />
-                    <col style={{ width: "7%" }} />
-                    <col style={{ width: "30%" }} />
-                    <col style={{ width: "15%" }} />
+                    <col className="w-[11%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[30%]" />
+                    <col className="w-[7%]" />
+                    <col className="w-[30%]" />
+                    <col className="w-[15%]" />
                   </colgroup>
                   <thead className="text-gray-500">
                     <tr>

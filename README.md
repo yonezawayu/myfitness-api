@@ -449,7 +449,8 @@ Dashboard では、食事・体重を横断して、
 - Frontend本番応答には `nosniff`、`strict-origin-when-cross-origin`、カメラ/マイク/位置情報の禁止、
   `X-Frame-Options: DENY`、限定的CSP（frame-ancestors/object-src/base-uri/form-action）を付与します。
   APIの接続許可先は既存 `NEXT_PUBLIC_API_BASE_URL` の仕様を維持し、今回の限定CSPでは変更しません。
-  **これはスクリプトのXSS防止まで完成したCSPではありません。**
+  **上記はM5-10時点の部分CSPです。** M5-13のnonce CSP・動的描画・JWT残存リスクは
+  [Frontendセキュリティ設計](docs/M5-13-frontend-security.md)を参照してください。隔離検証と稼働環境への反映状況は同文書で区別します。
   現状は静的生成とインラインstyle属性があり、Next.jsの初期化スクリプトもあるため、
   `script-src 'self'` を付けるだけでは破損します。`unsafe-inline` / `unsafe-eval` は追加していません。
   完全なCSPはnonce方式による動的描画・キャッシュ設計、インラインstyleの移行、ブラウザでの違反検証を別タスクで実施してください。

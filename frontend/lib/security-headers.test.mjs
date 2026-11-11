@@ -19,15 +19,14 @@ test("Next.js設定が本番用ヘッダー生成へ接続されている", asyn
 test("開発環境ではCSP/HSTSを追加しない", () => {
   assert.deepEqual(securityHeaders("development", "https://app.example.com"), []);
 });
-test("本番ヘッダーはフレーム・MIME・不要な機能を制限しAPI通信を変更しない", () => {
+test("静的ヘッダーは既存制限を維持しnonce CSPを重複付与しない", () => {
   const [{headers}] = securityHeaders("production");
   const values = Object.fromEntries(headers.map(h => [h.key, h.value]));
   assert.equal(values["X-Content-Type-Options"], "nosniff");
   assert.equal(values["X-Frame-Options"], "DENY");
   assert.equal(values["Referrer-Policy"], "strict-origin-when-cross-origin");
   assert.equal(values["Permissions-Policy"], "camera=(), microphone=(), geolocation=()");
-  assert.match(values["Content-Security-Policy"], /frame-ancestors 'none'/);
-  assert.doesNotMatch(values["Content-Security-Policy"], /unsafe-|script-src|style-src|connect-src/);
+  assert.equal(values["Content-Security-Policy"], undefined);
   assert.equal(values["Strict-Transport-Security"], undefined);
 });
 test("HSTSは設定済み公開HTTPSホストのみ・サブドメインとpreloadは対象外", () => {

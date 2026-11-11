@@ -69,6 +69,10 @@ jwt:
   issuer: "myfitness-api"
 
 myfitness:
+  proxy:
+    # Empty by default. Trust only dedicated proxy peers, never all private networks.
+    # Keep server.forward-headers-strategy=none so the resolver sees the socket peer.
+    trusted-cidrs: ${MYFITNESS_TRUSTED_PROXY_CIDRS:}
   auth-rate-limit:
     login-attempts: ${MYFITNESS_AUTH_LOGIN_ATTEMPTS:10}
     registration-attempts: ${MYFITNESS_AUTH_REGISTRATION_ATTEMPTS:5}

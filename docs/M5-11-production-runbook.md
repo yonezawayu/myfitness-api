@@ -240,7 +240,10 @@ Railway公式にX-Real-IPの供給記載はあるが、本調査では任意入�
 
 ## 11. ヘルスチェック
 
-公開前の別実装：`/health/live`（process応答のみ、秘密情報なし）と `/health/ready`（bounded DB probe、詳細非公開）を検討。
+M5-12ではDBを照会しない `/health/live` と `/health/ready`（`/health` alias）を実装し、隔離検証後、2026-11-09に承認済みの反映を実施。
+正確な条件・本番での未検証事項・DB疎通を保証しない制約は[M5-12仕様](M5-12-proxy-health.md)を参照。下記のDB probeは将来案であり今回未実装。
+
+`/health/live` と `/health/ready` はM5-12仕様に従う。readinessへbounded DB probeを追加する場合は、負荷・timeout・情報非公開を別途設計・検証する。
 認証なし200の最小応答、未ready503、他のActuator endpointは公開しない。権限・CORS・rate limit対象を回帰試験する。
 Railwayのdeployment health成功と継続監視は別物として運用する。[Railway Healthchecks](https://docs.railway.com/deployments/healthchecks)
 接続確認を過密に行ってNeonを常時wakeしないよう、監視間隔・readiness用途を区別する。

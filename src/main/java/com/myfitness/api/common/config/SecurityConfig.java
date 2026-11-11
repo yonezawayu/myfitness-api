@@ -44,7 +44,8 @@ public class SecurityConfig {
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter,
-                        AuthRateLimiter rateLimiter, HandlerMappingIntrospector introspector) throws Exception {
+                        AuthRateLimiter rateLimiter, HandlerMappingIntrospector introspector,
+                        ClientIpResolver clientIpResolver) throws Exception {
                 var mvc = new MvcRequestMatcher.Builder(introspector);
                 var login = mvc.pattern(HttpMethod.POST, "/auth/login");
                 var registration = mvc.pattern(HttpMethod.POST, "/users");
@@ -60,6 +61,9 @@ public class SecurityConfig {
                                                                 "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml")
                                                 .access((authentication, context) ->
                                                         new org.springframework.security.authorization.AuthorizationDecision(!production))
+                                                .requestMatchers(mvc.pattern(HttpMethod.GET, "/health"),
+                                                                mvc.pattern(HttpMethod.GET, "/health/live"),
+                                                                mvc.pattern(HttpMethod.GET, "/health/ready")).permitAll()
                                                 .requestMatchers(registration, login).permitAll()
                                                 .anyRequest().authenticated())
                                 .exceptionHandling(exceptions -> exceptions
@@ -68,7 +72,7 @@ public class SecurityConfig {
                                                                                 HttpServletResponse.SC_UNAUTHORIZED,
                                                                                 "Unauthorized")))
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                                .addFilterBefore(new AuthRateLimitFilter(rateLimiter, login, registration), JwtFilter.class);
+                                .addFilterBefore(new AuthRateLimitFilter(rateLimiter, login, registration, clientIpResolver), JwtFilter.class);
 
                 return http.build();
         }

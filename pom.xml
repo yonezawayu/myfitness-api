@@ -22,6 +22,8 @@
 
 	<properties>
 		<java.version>17</java.version>
+		<!-- PostgreSQL 18 support; keep Core, database module and Maven plugin aligned. -->
+		<flyway.version>11.20.3</flyway.version>
 		<lombok.version>1.18.38</lombok.version>
 	</properties>
 
